@@ -179,7 +179,7 @@ export default function SidebarClient({ items, initialCollapsed }: { items: Menu
                                     <span className="truncate font-medium">{item.label}</span>
                                 )}
                                 {item.href === "/chat" && chatUnreadCount > 0 && !collapsed && (
-                                    <span className="ml-auto flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-500 text-white text-[10px] px-1">
+                                    <span className="ml-auto flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-red-500 text-white text-[10px] px-1">
                                         {chatUnreadCount > 99 ? "99+" : chatUnreadCount}
                                     </span>
                                 )}
@@ -242,11 +242,8 @@ export default function SidebarClient({ items, initialCollapsed }: { items: Menu
                 ${mobileOpen ? "translate-x-0" : "-translate-x-full"}
                 md:hidden
             `}>
-                <div className={`flex h-16 items-center gap-3 ${theme.sidebar.headerBorder} px-4`}>
-                    <Image src="/logo1.png" alt="Fasttiw" width={32} height={32} className="shrink-0 object-contain" />
-                    <span className={`flex-1 truncate text-sm font-semibold tracking-wide ${theme.sidebar.brandText}`}>
-                        Fasttiw
-                    </span>
+                <div className={`flex h-16 items-center justify-between ${theme.sidebar.headerBorder} px-4`}>
+                    <Image src="/logo/fasttiw-logo.svg" alt="Fasttiw" width={69} height={28} className="shrink-0 object-contain" />
                     <button
                         onClick={() => setMobileOpen(false)}
                         className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 hover:bg-blue-50 hover:text-blue-500 transition-colors"
@@ -265,12 +262,11 @@ export default function SidebarClient({ items, initialCollapsed }: { items: Menu
                 transition-all duration-300 ease-in-out
                 ${collapsed ? "w-16" : "w-60"}
             `}>
-                <div className={`flex h-16 items-center gap-3 ${theme.sidebar.headerBorder} px-4`}>
-                    <Image src="/logo1.png" alt="Fasttiw" width={32} height={32} className="shrink-0 object-contain" />
-                    {!collapsed && (
-                        <span className={`flex-1 truncate text-sm font-semibold tracking-wide ${theme.sidebar.brandText}`}>
-                            Fasttiw
-                        </span>
+                <div className={`flex h-16 items-center ${collapsed ? "justify-center" : "gap-3 px-4"} ${theme.sidebar.headerBorder}`}>
+                    {collapsed ? (
+                        <Image src="/logo/favicon.svg" alt="Fasttiw" width={32} height={32} className="shrink-0 object-contain" />
+                    ) : (
+                        <Image src="/logo/fasttiw-logo.svg" alt="Fasttiw" width={98} height={40} className="shrink-0 object-contain" />
                     )}
                 </div>
 

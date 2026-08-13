@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { MessageCircle, Send, Image as ImageIcon, User } from "lucide-react";
+import { MessageCircle, Send, Image as ImageIcon, User, ArrowLeft } from "lucide-react";
 import { api } from "@/app/constans";
 import { authHeader } from "@/app/lib/auth";
 
@@ -191,7 +191,9 @@ export default function ChatInbox() {
 
     return (
         <div className="flex h-[calc(100vh-140px)] min-h-[500px] rounded-2xl border border-gray-200 bg-white overflow-hidden">
-            <div className="w-80 shrink-0 border-r border-gray-100 flex flex-col">
+            {/* รายชื่อแชท — บนมือถือกินเต็มจอแล้วซ่อนไปทางซ้ายทันทีที่เลือกแชท (กันบังพื้นที่คุย เพราะ w-80
+                คงที่แทบเต็มจอมือถืออยู่แล้ว) จอ md ขึ้นไปโชว์คู่กับแชทเสมอเหมือนเดิม ไม่เปลี่ยนพฤติกรรม */}
+            <div className={`w-full md:w-80 shrink-0 border-r border-gray-100 flex-col md:flex ${selectedId ? "hidden" : "flex"}`}>
                 <div className="px-4 py-3 border-b border-gray-100">
                     <h1 className="text-sm font-semibold text-gray-700">แชทกับลูกค้า</h1>
                 </div>
@@ -235,7 +237,7 @@ export default function ChatInbox() {
                 </div>
             </div>
 
-            <div className="flex-1 flex flex-col min-w-0">
+            <div className={`flex-1 flex-col min-w-0 md:flex ${selectedId ? "flex" : "hidden"}`}>
                 {!selected ? (
                     <div className="flex-1 flex flex-col items-center justify-center text-gray-300 gap-2">
                         <MessageCircle className="w-10 h-10" />
@@ -244,6 +246,14 @@ export default function ChatInbox() {
                 ) : (
                     <>
                         <div className="px-5 py-3 border-b border-gray-100 flex items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setSelectedId(null)}
+                                className="md:hidden -ml-1.5 p-1.5 text-gray-400 hover:text-gray-600 shrink-0"
+                                aria-label="กลับไปหน้ารายชื่อแชท"
+                            >
+                                <ArrowLeft className="w-5 h-5" />
+                            </button>
                             <span className="text-sm font-medium text-gray-800">{selected.customer_name || selected.guest_label}</span>
                             <ConversationBadge isCustomer={selected.is_customer} />
                         </div>

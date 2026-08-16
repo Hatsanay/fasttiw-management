@@ -4,7 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/app/constans";
 import { authHeader } from "@/app/lib/auth";
-import { CheckCircle2, XCircle, FileUp } from "lucide-react";
+import { CheckCircle2, XCircle, FileUp, Trash2 } from "lucide-react";
 import Button from "@/components/ui/Button/Button";
 import EditButton from "@/components/ui/Button/EditButton";
 import DeleteButton from "@/components/ui/Button/DeleteButton";
@@ -73,6 +73,12 @@ export default function ProductQuestionsPage() {
     const [deleteTarget, setDeleteTarget] = useState<Question | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
 
+    // ติ๊กเลือกหลายข้อเพื่อลบทีเดียว — ขอบเขตแค่หน้าปัจจุบัน (เปลี่ยนหน้า/ค้นหาใหม่ = เคลียร์ที่เลือกไว้
+    // กันสับสนว่าเผลอเลือกข้อที่มองไม่เห็นอยู่ค้างไว้ข้ามหน้า)
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [showBulkConfirm, setShowBulkConfirm] = useState(false);
+    const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+
     const { begin, isCurrent } = useLatestRequest();
 
     function reload() {
@@ -89,6 +95,7 @@ export default function ProductQuestionsPage() {
             setProduct(productData);
             setQuestions(questionsResult.data);
             setTotal(questionsResult.total);
+            setSelectedIds(new Set());
 
             const correctPage = clampPage(questionsResult.total, pageSize, page);
             if (correctPage !== page) setPage(correctPage); // total ลดลงจนหน้าปัจจุบันเกินขอบเขต — เด้งกลับหน้าที่มีข้อมูลจริง
@@ -109,6 +116,39 @@ export default function ProductQuestionsPage() {
     function handleSearch(val: string) {
         setSearch(val);
         setPage(1);
+    }
+
+    function toggleSelect(quesId: string) {
+        setSelectedIds((prev) => {
+            const next = new Set(prev);
+            if (next.has(quesId)) next.delete(quesId); else next.add(quesId);
+            return next;
+        });
+    }
+
+    function toggleSelectAll() {
+        setSelectedIds((prev) => (prev.size === questions.length ? new Set() : new Set(questions.map((q) => q.ques_id))));
+    }
+
+    async function handleBulkDelete() {
+        setIsBulkDeleting(true);
+        try {
+            const res = await fetch(`${api}/products/${id}/questions/batch`, {
+                method: "DELETE",
+                headers: { ...authHeader(), "Content-Type": "application/json" },
+                body: JSON.stringify({ ques_ids: Array.from(selectedIds) }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (res.ok) {
+                toast.success(data.message ?? "ลบสำเร็จ");
+                reload();
+            } else {
+                toast.error(data.message ?? "ลบไม่สำเร็จ กรุณาลองใหม่");
+            }
+        } finally {
+            setIsBulkDeleting(false);
+            setShowBulkConfirm(false);
+        }
     }
 
     async function handleDelete() {
@@ -164,6 +204,32 @@ export default function ProductQuestionsPage() {
 
             <SearchInput value={search} onChange={handleSearch} placeholder="ค้นหาคำถาม..." className="w-full sm:w-72 mb-4" />
 
+            {hasBit(BITS.deleteProduct) && questions.length > 0 && (
+                <div className="flex items-center gap-3 mb-3">
+                    <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
+                        <input
+                            type="checkbox"
+                            checked={selectedIds.size === questions.length}
+                            ref={(el) => {
+                                if (el) el.indeterminate = selectedIds.size > 0 && selectedIds.size < questions.length;
+                            }}
+                            onChange={toggleSelectAll}
+                            className="h-4 w-4 rounded border-gray-300"
+                        />
+                        เลือกทั้งหมดในหน้านี้
+                    </label>
+                    {selectedIds.size > 0 && (
+                        <button
+                            onClick={() => setShowBulkConfirm(true)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-white bg-red-500 hover:bg-red-600 rounded transition-colors font-medium"
+                        >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            ลบที่เลือก ({selectedIds.size})
+                        </button>
+                    )}
+                </div>
+            )}
+
             {isPending ? (
                 <p className="text-gray-400 text-sm">กำลังโหลด...</p>
             ) : total === 0 ? (
@@ -188,8 +254,18 @@ export default function ProductQuestionsPage() {
                                     </div>
                                 )}
                                 <div className="flex items-start justify-between gap-2">
-                                    <p className="font-medium text-gray-800">
-                                        {(pageSize === -1 ? 0 : (page - 1) * pageSize) + qi + 1}. {q.ques_text}
+                                    <p className="font-medium text-gray-800 flex items-start gap-2">
+                                        {hasBit(BITS.deleteProduct) && (
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedIds.has(q.ques_id)}
+                                                onChange={() => toggleSelect(q.ques_id)}
+                                                className="h-4 w-4 mt-0.5 shrink-0 rounded border-gray-300"
+                                            />
+                                        )}
+                                        <span>
+                                            {(pageSize === -1 ? 0 : (page - 1) * pageSize) + qi + 1}. {q.ques_text}
+                                        </span>
                                     </p>
                                     <div className="flex items-center gap-2 shrink-0">
                                         {q.ques_topic_name && (
@@ -275,6 +351,16 @@ export default function ProductQuestionsPage() {
                 loading={isDeleting}
                 onConfirm={handleDelete}
                 onCancel={() => setDeleteTarget(null)}
+            />
+
+            <ConfirmDialog
+                open={showBulkConfirm}
+                title={`ลบคำถามที่เลือกไว้ ${selectedIds.size} ข้อ?`}
+                description="คำถามและตัวเลือกทั้งหมดของทุกข้อที่เลือกจะถูกลบและไม่สามารถกู้คืนได้"
+                confirmLabel="ลบทั้งหมด"
+                loading={isBulkDeleting}
+                onConfirm={handleBulkDelete}
+                onCancel={() => setShowBulkConfirm(false)}
             />
         </div>
     );

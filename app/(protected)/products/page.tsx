@@ -17,7 +17,7 @@ import { usePermission, BITS } from "@/app/components/permission-provider";
 import { useLatestRequest } from "@/app/lib/useLatestRequest";
 import { clampPage } from "@/app/lib/clampPage";
 import { toast } from "sonner";
-import { FileUp, Eye } from "lucide-react";
+import { FileUp, Eye, Archive, ArchiveRestore } from "lucide-react";
 
 type Product = {
     prod_id: string;
@@ -136,6 +136,24 @@ export default function ProductsPage() {
         }
     }
 
+    // สลับ archive/กู้คืน — ทางเลือกที่ย้อนกลับได้แทนการลบจริง (ใช้ตอนลบไม่ได้เพราะมีสิทธิ์/คำสั่งซื้อผูกอยู่
+    // หรือแค่อยากซ่อนจากลูกค้าชั่วคราวโดยไม่ลบ) ไม่ต้องมี confirm dialog เหมือนลบเพราะกดสลับกลับได้ตลอด
+    async function handleToggleArchive(product: Product) {
+        const nextStatus = product.prod_status === "archived" ? "draft" : "archived";
+        const res = await fetch(`${api}/products/${product.prod_id}/status`, {
+            method: "PUT",
+            headers: { ...authHeader(), "Content-Type": "application/json" },
+            body: JSON.stringify({ prod_status: nextStatus }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok) {
+            toast.success(data.message ?? "สำเร็จ");
+            reload();
+        } else {
+            toast.error(data.message ?? "ทำรายการไม่สำเร็จ กรุณาลองใหม่");
+        }
+    }
+
     function handleSearch(val: string) {
         setSearch(val);
         setPage(1);
@@ -158,6 +176,16 @@ export default function ProductsPage() {
                     >
                         แจ้งปัญหารายข้อ
                     </button>
+                    {hasBit(BITS.deleteProduct) && (
+                        <button
+                            type="button"
+                            onClick={() => router.push("/products/archived")}
+                            className="inline-flex items-center gap-1.5 px-4 py-2 text-sm text-amber-700 border border-amber-300 bg-amber-50 rounded hover:bg-amber-100"
+                        >
+                            <Archive className="w-4 h-4" />
+                            คลังจัดเก็บ
+                        </button>
+                    )}
                     {hasBit(BITS.createProduct) && (
                         <Button onClick={() => router.push("/products/create")}>สร้างชุดข้อสอบ</Button>
                     )}
@@ -225,6 +253,19 @@ export default function ProductsPage() {
                                         )}
                                         {hasBit(BITS.editProduct) && (
                                             <EditButton onClick={() => router.push(`/products/edit?id=${p.prod_id}`)} />
+                                        )}
+                                        {hasBit(BITS.deleteProduct) && (
+                                            <button
+                                                onClick={() => handleToggleArchive(p)}
+                                                title={p.prod_status === "archived" ? "กู้คืนชุดข้อสอบ" : "เก็บเข้าคลัง"}
+                                                className="inline-flex items-center gap-1 px-2 py-1 bg-amber-500 hover:bg-amber-600 text-white text-xs rounded transition-colors duration-200 font-medium"
+                                            >
+                                                {p.prod_status === "archived" ? (
+                                                    <ArchiveRestore className="w-3.5 h-3.5" />
+                                                ) : (
+                                                    <Archive className="w-3.5 h-3.5" />
+                                                )}
+                                            </button>
                                         )}
                                         {hasBit(BITS.deleteProduct) && (
                                             <DeleteButton onClick={() => setDeleteTarget(p)} />

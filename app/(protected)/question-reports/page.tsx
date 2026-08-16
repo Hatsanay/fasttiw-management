@@ -71,7 +71,7 @@ export default function QuestionReportsPage() {
 
     const columns: Column<QuestionReport>[] = [
         { key: "prod_name", header: "ชุดข้อสอบ" },
-        { key: "ques_text", header: "คำถาม", render: (v) => <span className="line-clamp-2">{v as string}</span> },
+        { key: "ques_text", header: "คำถาม", render: (v) => <span className="line-clamp-2 whitespace-pre-line">{v as string}</span> },
         { key: "qrp_message", header: "ปัญหาที่แจ้ง", render: (v) => <span className="line-clamp-2">{v as string}</span> },
         { key: "cus_username", header: "แจ้งโดย" },
         {

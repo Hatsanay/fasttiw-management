@@ -266,9 +266,10 @@ export default function ImportQuestionsPage() {
                             <Download className="w-4 h-4" /> ดาวน์โหลดเทมเพลต
                         </button>
                     </div>
-                    <p><code className="text-blue-600">คำถาม</code>, <code className="text-blue-600">วิธีคิด</code>, <code className="text-blue-600">ข้อที่ถูก</code>, <code className="text-blue-600">หมวดหมู่</code>, <code className="text-blue-600">ตัวเลือก1</code>...<code className="text-blue-600">ตัวเลือก6</code>, <code className="text-blue-600">เหตุผลผิด1</code>...<code className="text-blue-600">เหตุผลผิด6</code></p>
+                    <p><code className="text-blue-600">บทความร่วม</code>, <code className="text-blue-600">คำถาม</code>, <code className="text-blue-600">วิธีคิด</code>, <code className="text-blue-600">ข้อที่ถูก</code>, <code className="text-blue-600">หมวดหมู่</code>, <code className="text-blue-600">ตัวเลือก1</code>...<code className="text-blue-600">ตัวเลือก6</code>, <code className="text-blue-600">เหตุผลผิด1</code>...<code className="text-blue-600">เหตุผลผิด6</code></p>
                     <p className="text-gray-400">เติมตัวเลือกจากคอลัมน์ 1 ไล่ขึ้นไปโดยไม่เว้นช่องว่าง — &quot;ข้อที่ถูก&quot; ใส่เป็นเลขลำดับตัวเลือก (เช่น 1-4)</p>
                     <p className="text-gray-400">&quot;หมวดหมู่&quot; ไม่บังคับ — ใส่ชื่อหัวข้อ (เช่น อนุกรม, อุปมาอุปไมย) ระบบจะสร้างหมวดหมู่ใหม่ให้อัตโนมัติถ้ายังไม่มี โดยผูกกับหมวดหมู่ของชุดข้อสอบนี้ให้เองอัตโนมัติ</p>
+                    <p className="text-gray-400">ถ้าหลายข้อใช้บทความ/ตาราง/รูปเดียวกัน (เช่น อ่านบทความแล้วตอบข้อ 48-52) ใช้คอลัมน์ &quot;บทความร่วม&quot; — กรอกข้อความหรือแนบรูปครั้งเดียวที่แถวแรกของกลุ่ม แล้วลากเลือกเซลล์คอลัมน์นี้คลุมแถวของกลุ่มแล้วกด Merge &amp; Center ใน Excel ระบบจะคัดลอกให้ทุกข้อในกลุ่มอัตโนมัติตอนนำเข้า (ดูวิธีทำละเอียดในเทมเพลต)</p>
                     <p className="text-gray-400">เทมเพลตมีตัวอย่าง + คำอธิบายอยู่ในชีท &quot;คำอธิบาย + ตัวอย่าง&quot; แยกจากชีทที่ใช้กรอกจริง — อัปโหลดเทมเพลตกลับไปโดยไม่ลบตัวอย่างก็ไม่เป็นไร ระบบจะไม่นำตัวอย่างไปบันทึก</p>
                 </div>
 

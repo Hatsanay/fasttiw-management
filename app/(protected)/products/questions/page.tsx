@@ -4,7 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/app/constans";
 import { authHeader } from "@/app/lib/auth";
-import { CheckCircle2, XCircle, FileUp, Trash2 } from "lucide-react";
+import { CheckCircle2, XCircle, FileUp, FileDown, Trash2 } from "lucide-react";
 import Button from "@/components/ui/Button/Button";
 import EditButton from "@/components/ui/Button/EditButton";
 import DeleteButton from "@/components/ui/Button/DeleteButton";
@@ -78,6 +78,7 @@ export default function ProductQuestionsPage() {
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [showBulkConfirm, setShowBulkConfirm] = useState(false);
     const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
 
     const { begin, isCurrent } = useLatestRequest();
 
@@ -151,6 +152,31 @@ export default function ProductQuestionsPage() {
         }
     }
 
+    // ส่งออกคำถามทั้งหมดเป็นไฟล์ .xlsx รูปแบบเดียวกับเทมเพลตนำเข้า — เอาไปแก้ไขนอกระบบทีละหลายข้อ หรือนำเข้ากลับ
+    // เข้า product นี้/product อื่นได้ทันที (ดู exportQuestions ใน question.controller.js ฝั่ง backend)
+    async function handleExport() {
+        setIsExporting(true);
+        try {
+            const res = await fetch(`${api}/products/${id}/questions/export`, { headers: authHeader() });
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                toast.error(data.message ?? "ส่งออกไม่สำเร็จ กรุณาลองใหม่");
+                return;
+            }
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `export_questions_${id}.xlsx`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+        } finally {
+            setIsExporting(false);
+        }
+    }
+
     async function handleDelete() {
         if (!deleteTarget) return;
         setIsDeleting(true);
@@ -182,6 +208,15 @@ export default function ProductQuestionsPage() {
                     <p className="text-sm text-gray-500">{product?.prod_name ?? "..."} — {total} ข้อ</p>
                 </div>
                 <div className="flex items-center gap-2">
+                    {hasBit(BITS.createProduct) && total > 0 && (
+                        <button
+                            onClick={handleExport}
+                            disabled={isExporting}
+                            className="inline-flex items-center gap-1.5 px-4 py-2 text-sm text-indigo-600 border border-indigo-200 rounded hover:bg-indigo-50 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            <FileDown className="w-4 h-4" /> {isExporting ? "กำลังส่งออก..." : "ส่งออก Excel"}
+                        </button>
+                    )}
                     {hasBit(BITS.createProduct) && (
                         <button
                             onClick={() => router.push(`/products/import?id=${id}`)}
@@ -263,7 +298,7 @@ export default function ProductQuestionsPage() {
                                                 className="h-4 w-4 mt-0.5 shrink-0 rounded border-gray-300"
                                             />
                                         )}
-                                        <span>
+                                        <span className="whitespace-pre-line">
                                             {(pageSize === -1 ? 0 : (page - 1) * pageSize) + qi + 1}. {q.ques_text}
                                         </span>
                                     </p>

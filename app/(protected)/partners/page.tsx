@@ -257,7 +257,7 @@ export default function PartnersPage() {
 
             {hasBit(BITS.editPartner) && (
                 <form onSubmit={handleSubmitForm} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6 flex flex-wrap items-end gap-3">
-                    <div className="flex-1 min-w-[200px]">
+                    <div className="flex-1 min-w-50">
                         <label className="block text-xs font-medium text-gray-500 mb-1">พนักงาน</label>
                         <SearchableSelect
                             loadOptions={loadStaffOptions}

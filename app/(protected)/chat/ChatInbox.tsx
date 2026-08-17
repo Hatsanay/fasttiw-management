@@ -87,8 +87,8 @@ async function downloadImage(url: string) {
 
 function ImageLightbox({ url, onClose }: { url: string; onClose: () => void }) {
     return (
-        // z-[70] > z-อื่นๆ ในหน้านี้ ให้ lightbox ลอยอยู่บนสุดเสมอ
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-4" onClick={onClose}>
+        // z-70 > z-อื่นๆ ในหน้านี้ ให้ lightbox ลอยอยู่บนสุดเสมอ
+        <div className="fixed inset-0 z-70 flex items-center justify-center bg-black/80 p-4" onClick={onClose}>
             <div className="relative max-h-full max-w-full" onClick={(e) => e.stopPropagation()}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={url} alt="" className="max-h-[85vh] max-w-full rounded-lg object-contain" />
@@ -157,7 +157,7 @@ function MessageBubble({ msg, onImageClick }: { msg: ChatMessage; onImageClick: 
         <div className={`flex ${isStaff ? "justify-end" : "justify-start"}`}>
             <div className={`max-w-[70%] rounded-2xl px-3.5 py-2 text-sm ${isStaff ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-800"}`}>
                 {!!msg.msg_image_urls?.length && <MessageImages urls={msg.msg_image_urls} onImageClick={onImageClick} />}
-                {msg.msg_text && <p className="whitespace-pre-line break-words"><Linkified text={msg.msg_text} /></p>}
+                {msg.msg_text && <p className="whitespace-pre-line wrap-break-word"><Linkified text={msg.msg_text} /></p>}
                 <p className={`text-[10px] mt-1 ${isStaff ? "text-blue-100" : "text-gray-400"}`}>
                     {new Date(msg.msg_created_at).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })}
                 </p>
@@ -259,7 +259,7 @@ export default function ChatInbox() {
     const selected = conversations.find((c) => c.conv_id === selectedId);
 
     return (
-        <div className="flex h-[calc(100vh-140px)] min-h-[500px] rounded-2xl border border-gray-200 bg-white overflow-hidden">
+        <div className="flex h-[calc(100vh-140px)] min-h-125 rounded-2xl border border-gray-200 bg-white overflow-hidden">
             {/* รายชื่อแชท — บนมือถือกินเต็มจอแล้วซ่อนไปทางซ้ายทันทีที่เลือกแชท (กันบังพื้นที่คุย เพราะ w-80
                 คงที่แทบเต็มจอมือถืออยู่แล้ว) จอ md ขึ้นไปโชว์คู่กับแชทเสมอเหมือนเดิม ไม่เปลี่ยนพฤติกรรม */}
             <div className={`w-full md:w-80 shrink-0 border-r border-gray-100 flex-col md:flex ${selectedId ? "hidden" : "flex"}`}>
@@ -296,7 +296,7 @@ export default function ChatInbox() {
                             <div className="shrink-0 flex flex-col items-end gap-1">
                                 <span className="text-[10px] text-gray-400">{relativeTime(c.last_message_at)}</span>
                                 {c.unread_count > 0 && (
-                                    <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-500 text-white text-[10px] px-1">
+                                    <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-red-500 text-white text-[10px] px-1">
                                         {c.unread_count}
                                     </span>
                                 )}

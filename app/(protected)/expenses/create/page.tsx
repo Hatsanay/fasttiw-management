@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/app/constans";
 import { authHeader } from "@/app/lib/auth";
+import { toDateInput } from "@/app/lib/date";
 import Button from "@/components/ui/Button/Button";
 import Input from "@/components/ui/Input/input";
 import SearchableSelect from "@/components/ui/SearchableSelect";
@@ -28,7 +29,7 @@ async function loadProductOptions(search: string) {
 }
 
 function todayDateInputValue(): string {
-    return new Date().toISOString().slice(0, 10);
+    return toDateInput(new Date());
 }
 
 export default function CreateExpensePage() {

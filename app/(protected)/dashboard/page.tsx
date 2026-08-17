@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/app/constans";
 import { authHeader } from "@/app/lib/auth";
+import { toDateInput } from "@/app/lib/date";
 import { formatBaht } from "@/app/function";
 import { usePermission, BITS } from "@/app/components/permission-provider";
 import {
@@ -28,10 +29,6 @@ type Summary = {
 type RetainedEarnings = { retained_earnings: number };
 
 type PayrollSummary = { eligible_count: number; paid_count: number; paid_amount: number; owed_count: number; owed_amount: number };
-
-function toDateInput(d: Date): string {
-    return d.toISOString().slice(0, 10);
-}
 
 function thisMonthRange(): { from: string; to: string } {
     const now = new Date();

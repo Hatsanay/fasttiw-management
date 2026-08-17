@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { api } from "@/app/constans";
 import { authHeader } from "@/app/lib/auth";
+import { toDateInput } from "@/app/lib/date";
 import { useLatestRequest } from "@/app/lib/useLatestRequest";
 import { formatBaht } from "@/app/function";
 import { TrendingUp, TrendingDown, Wallet, Scale, Package, Percent, Receipt, PiggyBank } from "lucide-react";
@@ -44,9 +45,6 @@ type ByProductRow = {
 type ViewKey = "overview" | "by_product";
 type PresetKey = "this_month" | "last_month" | "this_year" | "custom";
 
-function toDateInput(d: Date): string {
-    return d.toISOString().slice(0, 10);
-}
 
 // ช่วงวันที่ตามปุ่มลัด — คำนวณจากเวลาเครื่อง client ตอนกดปุ่ม (พอสำหรับรายงานสรุป ไม่ต้องเป๊ะระดับ timezone)
 function presetRange(preset: PresetKey): { from: string; to: string } {

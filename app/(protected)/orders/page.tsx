@@ -51,6 +51,16 @@ async function forceConfirmOrder(id: string) {
     return data;
 }
 
+async function cancelOrder(id: string) {
+    const res = await fetch(`${api}/orders/${id}/cancel`, {
+        method: "PUT",
+        headers: authHeader(),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.message ?? "เกิดข้อผิดพลาด");
+    return data;
+}
+
 export default function OrdersPage() {
     const router = useRouter();
     const hasBit = usePermission();
@@ -58,6 +68,7 @@ export default function OrdersPage() {
     const [orders, setOrders] = useState<Order[]>([]);
     const [status, setStatus] = useState<"" | Order["ord_status"]>("pending");
     const [confirmingId, setConfirmingId] = useState<string | null>(null);
+    const [cancellingId, setCancellingId] = useState<string | null>(null);
 
     function reload() {
         startTransition(async () => {
@@ -89,6 +100,23 @@ export default function OrdersPage() {
         }
     }
 
+    async function handleCancel(row: Order) {
+        if (!window.confirm(`ยืนยันยกเลิกคำสั่งซื้อ ${row.ord_id} ของลูกค้า "${row.cus_username}"? หากลูกค้าเพิ่งจ่ายเงินสำเร็จพอดี ระบบจะยืนยันการชำระเงินให้แทนโดยอัตโนมัติ`)) {
+            return;
+        }
+        setCancellingId(row.ord_id);
+        try {
+            await cancelOrder(row.ord_id);
+            toast.success("ยกเลิกคำสั่งซื้อสำเร็จ");
+            reload();
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
+            reload();
+        } finally {
+            setCancellingId(null);
+        }
+    }
+
     const columns: Column<Order>[] = [
         { key: "ord_id", header: "เลขที่คำสั่งซื้อ" },
         { key: "cus_username", header: "ลูกค้า" },
@@ -106,7 +134,7 @@ export default function OrdersPage() {
                 );
             },
         },
-        { key: "ord_omise_charge_id", header: "Omise charge", render: (v) => (v as string | null) ?? "—" },
+        { key: "ord_omise_charge_id", header: "รหัสอ้างอิงการชำระเงิน", render: (v) => (v as string | null) ?? "—" },
         { key: "ord_created_at", header: "สร้างเมื่อ", render: (v) => formatDate(v) },
     ];
 
@@ -156,14 +184,24 @@ export default function OrdersPage() {
                 loading={isPending}
                 actions={(row) =>
                     row.ord_status === "pending" && hasBit(BITS.createCustomer) ? (
-                        <button
-                            type="button"
-                            onClick={() => handleForceConfirm(row)}
-                            disabled={confirmingId === row.ord_id}
-                            className="px-3 py-1.5 text-xs text-white bg-blue-600 hover:bg-blue-700 rounded disabled:opacity-50"
-                        >
-                            {confirmingId === row.ord_id ? "กำลังยืนยัน..." : "ยืนยันจ่ายเงินด้วยมือ"}
-                        </button>
+                        <div className="flex items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={() => handleForceConfirm(row)}
+                                disabled={confirmingId === row.ord_id || cancellingId === row.ord_id}
+                                className="px-3 py-1.5 text-xs text-white bg-blue-600 hover:bg-blue-700 rounded disabled:opacity-50"
+                            >
+                                {confirmingId === row.ord_id ? "กำลังยืนยัน..." : "ยืนยันจ่ายเงินด้วยมือ"}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => handleCancel(row)}
+                                disabled={confirmingId === row.ord_id || cancellingId === row.ord_id}
+                                className="px-3 py-1.5 text-xs text-red-600 border border-red-200 hover:bg-red-50 rounded disabled:opacity-50"
+                            >
+                                {cancellingId === row.ord_id ? "กำลังยกเลิก..." : "ยกเลิกคำสั่งซื้อ"}
+                            </button>
+                        </div>
                     ) : null
                 }
             />

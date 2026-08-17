@@ -64,7 +64,7 @@ export default function PaymentSettingsPage() {
         <div className="p-4 sm:p-6 max-w-2xl mx-auto">
             <h1 className="text-xl sm:text-2xl font-bold text-gray-800 mb-1">ค่าธรรมเนียมการชำระเงิน</h1>
             <p className="text-sm text-gray-400 mb-6">
-                % ที่ผู้ให้บริการ payment gateway (Omise) หักต่อรายการตอนลูกค้าจ่ายผ่าน QR PromptPay — ระบบจะหักตามนี้จากยอดขายอัตโนมัติทุกครั้งที่มีการจ่ายเงินจริงผ่าน QR
+                % ที่ผู้ให้บริการ payment gateway (Stripe) หักต่อรายการตอนลูกค้าจ่ายผ่าน QR PromptPay — ระบบจะหักตามนี้จากยอดขายอัตโนมัติทุกครั้งที่มีการจ่ายเงินจริงผ่าน QR
             </p>
 
             {loading ? (
@@ -81,7 +81,7 @@ export default function PaymentSettingsPage() {
                             error={!!fieldError}
                         />
                         {fieldError && <p className="text-xs text-red-500 mt-1">{fieldError}</p>}
-                        <p className="text-xs text-gray-400 mt-1">เช่น ถ้า Omise หัก 1.77% ต่อรายการ ให้ใส่ 1.77</p>
+                        <p className="text-xs text-gray-400 mt-1">เช่น ถ้า Stripe หัก 1.65% ต่อรายการ ให้ใส่ 1.65</p>
                     </div>
 
                     {error && <p className="text-sm text-red-600">{error}</p>}

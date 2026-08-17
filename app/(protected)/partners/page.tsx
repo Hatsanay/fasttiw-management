@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/app/constans";
 import { authHeader } from "@/app/lib/auth";
+import { toDateInput } from "@/app/lib/date";
 import DataTable, { Column } from "@/components/ui/datatable/datatable";
 import Button from "@/components/ui/Button/Button";
 import Input from "@/components/ui/Input/input";
@@ -45,9 +46,6 @@ async function fetchPartners(params: { limit: number; offset: number; search: st
     return res.json() as Promise<{ data: Partner[]; total: number }>;
 }
 
-function toDateInput(d: Date): string {
-    return d.toISOString().slice(0, 10);
-}
 
 function presetRange(preset: PresetKey): { from: string; to: string } {
     const now = new Date();

@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/app/constans";
 import { authHeader } from "@/app/lib/auth";
+import { toDateInput } from "@/app/lib/date";
 import { formatBaht } from "@/app/function";
 import Button from "@/components/ui/Button/Button";
 import { toast } from "sonner";
@@ -30,10 +31,6 @@ type AllocationPreview = {
 };
 
 type PresetKey = "this_month" | "last_month" | "this_year" | "all_time" | "custom";
-
-function toDateInput(d: Date): string {
-    return d.toISOString().slice(0, 10);
-}
 
 function presetRange(preset: PresetKey): { from: string; to: string } {
     const now = new Date();

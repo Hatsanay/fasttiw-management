@@ -1,13 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { toDateInput } from "@/app/lib/date";
 
 export type PeriodRange = { from: string; to: string };
 export type PeriodPreset = "today" | "this_month" | "last_month" | "this_year" | "custom";
-
-function toDateInput(d: Date): string {
-    return d.toISOString().slice(0, 10);
-}
 
 // ช่วงวันที่ตามปุ่มลัด — คำนวณจากเวลาเครื่อง client ตอนกดปุ่ม เหมือน reports/page.tsx (พอสำหรับ
 // รายงานสรุป ไม่ต้องเป๊ะระดับ timezone) แยกออกมาเป็น component กลางเพราะ widget แดชบอร์ดใหม่หลายตัว

@@ -15,6 +15,7 @@ type Product = {
     prod_name: string;
     prod_description: string | null;
     prod_price: number;
+    prod_compare_price: number | null;
     prod_is_free: boolean;
     prod_cover_url: string | null;
     prod_status: "draft" | "published" | "archived";
@@ -54,11 +55,11 @@ async function loadStaffOptions(search: string) {
 const SERVER_BASE = new URL(api).origin;
 
 type FormErrors = {
-    prod_name?: string; prod_price?: string; exam_duration?: string; commission_value?: string; entitlement_duration?: string;
+    prod_name?: string; prod_price?: string; prod_compare_price?: string; exam_duration?: string; commission_value?: string; entitlement_duration?: string;
 };
 
 function validate(
-    prodName: string, prodPrice: string, isFree: boolean, examDuration: string,
+    prodName: string, prodPrice: string, prodComparePrice: string, isFree: boolean, examDuration: string,
     commissionStaffId: string, commissionType: "percent" | "fixed", commissionValue: string,
     entitlementLifetime: boolean, entitlementDuration: string
 ): FormErrors {
@@ -71,6 +72,13 @@ function validate(
         const priceNum = Number(prodPrice);
         if (!prodPrice.trim() || !Number.isFinite(priceNum) || priceNum <= 0) {
             errors.prod_price = "กรุณากรอกราคามากกว่า 0 (หรือติ๊กแจกฟรีถ้าต้องการแจกฟรี)";
+        }
+
+        if (prodComparePrice.trim()) {
+            const compareNum = Number(prodComparePrice);
+            if (!Number.isFinite(compareNum) || compareNum <= priceNum) {
+                errors.prod_compare_price = "ราคาปกติต้องมากกว่าราคาขายจริง ไม่งั้นจะไม่ใช่ส่วนลด";
+            }
         }
     }
 
@@ -108,6 +116,7 @@ export default function EditProductPage() {
     const [prodName, setProdName] = useState("");
     const [prodDescription, setProdDescription] = useState("");
     const [prodPrice, setProdPrice] = useState("0");
+    const [prodComparePrice, setProdComparePrice] = useState("");
     const [isFree, setIsFree] = useState(false);
     const [examDuration, setExamDuration] = useState("60");
     const [entitlementLifetime, setEntitlementLifetime] = useState(true);
@@ -131,6 +140,11 @@ export default function EditProductPage() {
     function handlePriceChange(e: React.ChangeEvent<HTMLInputElement>) {
         setProdPrice(e.target.value);
         if (errors.prod_price) setErrors((prev) => ({ ...prev, prod_price: undefined }));
+    }
+
+    function handleComparePriceChange(e: React.ChangeEvent<HTMLInputElement>) {
+        setProdComparePrice(e.target.value);
+        if (errors.prod_compare_price) setErrors((prev) => ({ ...prev, prod_compare_price: undefined }));
     }
 
     function handleFreeChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -171,6 +185,7 @@ export default function EditProductPage() {
             setProdName(data.prod_name);
             setProdDescription(data.prod_description ?? "");
             setProdPrice(String(data.prod_price));
+            setProdComparePrice(data.prod_compare_price != null ? String(data.prod_compare_price) : "");
             setIsFree(!!data.prod_is_free);
             setExamDuration(String(data.prod_exam_duration_minutes ?? 60));
             setEntitlementLifetime(data.prod_entitlement_duration_months == null);
@@ -189,7 +204,7 @@ export default function EditProductPage() {
         setError(null);
 
         const fieldErrors = validate(
-            prodName, prodPrice, isFree, examDuration, commissionStaffId, commissionType, commissionValue,
+            prodName, prodPrice, prodComparePrice, isFree, examDuration, commissionStaffId, commissionType, commissionValue,
             entitlementLifetime, entitlementDuration
         );
         if (Object.keys(fieldErrors).length > 0) { setErrors(fieldErrors); return; }
@@ -202,6 +217,7 @@ export default function EditProductPage() {
                     prod_name: prodName,
                     prod_description: prodDescription,
                     prod_price: Number(prodPrice) || 0,
+                    prod_compare_price: !isFree && prodComparePrice.trim() ? Number(prodComparePrice) : null,
                     prod_is_free: isFree,
                     prod_exam_duration_minutes: Number(examDuration) || 60,
                     prod_entitlement_duration_months: entitlementLifetime ? null : Number(entitlementDuration),
@@ -280,6 +296,23 @@ export default function EditProductPage() {
                         />
                         <span className="text-sm text-gray-700">แจกฟรี (เก็บเงินจริง 0 บาทตอนเช็คเอาท์ ไม่ว่าราคาด้านบนจะตั้งไว้เท่าไหร่ — ใส่ไว้โชว์เป็น &quot;ราคาปกติ&quot; ได้)</span>
                     </label>
+
+                    {!isFree && (
+                        <div className="mt-3">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">ราคาปกติ (ไม่บังคับ)</label>
+                            <Input
+                                type="number"
+                                min={0}
+                                step="0.01"
+                                value={prodComparePrice}
+                                onChange={handleComparePriceChange}
+                                className="w-full"
+                                placeholder="เช่น 399 (โชว์ขีดฆ่าคู่กับราคาขายจริง สร้างความรู้สึกว่ากำลังลดราคา)"
+                                error={!!errors.prod_compare_price}
+                            />
+                            {errors.prod_compare_price && <p className="text-xs text-red-500 mt-1">{errors.prod_compare_price}</p>}
+                        </div>
+                    )}
                 </div>
 
                 <div>

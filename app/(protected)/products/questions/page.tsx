@@ -335,9 +335,9 @@ export default function ProductQuestionsPage() {
                                                             className="mb-1.5 h-16 w-auto max-w-32 rounded border border-gray-100 object-contain bg-white"
                                                         />
                                                     )}
-                                                    <p>{c.cho_text}</p>
+                                                    <p className="whitespace-pre-line">{c.cho_text}</p>
                                                     {!isCorrect && c.cho_wrong_reason && (
-                                                        <p className="text-xs text-gray-400 mt-0.5">เหตุผลที่ผิด: {c.cho_wrong_reason}</p>
+                                                        <p className="text-xs text-gray-400 mt-0.5 whitespace-pre-line">เหตุผลที่ผิด: {c.cho_wrong_reason}</p>
                                                     )}
                                                 </div>
                                             </div>
@@ -348,7 +348,7 @@ export default function ProductQuestionsPage() {
                                 {q.ques_explanation && (
                                     <div className="border-t border-gray-100 pt-3">
                                         <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">วิธีคิด</p>
-                                        <p className="text-sm text-gray-600">{q.ques_explanation}</p>
+                                        <p className="text-sm text-gray-600 whitespace-pre-line">{q.ques_explanation}</p>
                                     </div>
                                 )}
 

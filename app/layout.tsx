@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { Toaster } from "sonner";
 import "./globals.css";
@@ -9,8 +9,15 @@ const kanit = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Fasttiw",
-  description: "Project status tracking for clients and team",
+  title: "Fasttiw Admin",
+  // ค่าเดิมเป็น description ของ template ตั้งต้น ("Project status tracking...") ซึ่งไม่เกี่ยวข้องกับระบบนี้เลย
+  description: "ระบบหลังบ้านจัดการชุดข้อสอบ สิทธิ์การเข้าถึง และคำสั่งซื้อของ Fasttiw",
+  robots: { index: false, follow: false }, // หลังบ้านไม่ควรอยู่บนผลค้นหา
+};
+
+// สีแถบ browser บนมือถือ — น้ำเงินแบรนด์เดียวกับฝั่งลูกค้า (brand kit ล็อคไว้ #2B5CE6)
+export const viewport: Viewport = {
+  themeColor: "#2B5CE6",
 };
 
 export default function RootLayout({

@@ -243,7 +243,7 @@ export default function SidebarClient({ items, initialCollapsed }: { items: Menu
                 md:hidden
             `}>
                 <div className={`flex h-16 items-center justify-between ${theme.sidebar.headerBorder} px-4`}>
-                    <Image src="/logo/fasttiw-logo.svg" alt="Fasttiw" width={69} height={28} className="shrink-0 object-contain" />
+                    <Image src="/logo/fasttiw-logo.svg" alt="Fasttiw" width={91} height={28} className="shrink-0 object-contain" />
                     <button
                         onClick={() => setMobileOpen(false)}
                         className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 hover:bg-blue-50 hover:text-blue-500 transition-colors"
@@ -264,9 +264,9 @@ export default function SidebarClient({ items, initialCollapsed }: { items: Menu
             `}>
                 <div className={`flex h-16 items-center ${collapsed ? "justify-center" : "gap-3 px-4"} ${theme.sidebar.headerBorder}`}>
                     {collapsed ? (
-                        <Image src="/logo/favicon.svg" alt="Fasttiw" width={32} height={32} className="shrink-0 object-contain" />
+                        <Image src="/logo/fasttiw-symbol.svg" alt="Fasttiw" width={32} height={32} className="shrink-0 object-contain" />
                     ) : (
-                        <Image src="/logo/fasttiw-logo.svg" alt="Fasttiw" width={98} height={40} className="shrink-0 object-contain" />
+                        <Image src="/logo/fasttiw-logo.svg" alt="Fasttiw" width={130} height={40} className="shrink-0 object-contain" />
                     )}
                 </div>
 

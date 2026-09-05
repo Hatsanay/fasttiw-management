@@ -15,6 +15,7 @@ import ProductRankingWidget from "./widgets/ProductRankingWidget";
 import PackageRankingWidget from "./widgets/PackageRankingWidget";
 import ConversionWidget from "./widgets/ConversionWidget";
 import TopCategoriesWidget from "./widgets/TopCategoriesWidget";
+import SalesChannelWidget from "./widgets/SalesChannelWidget";
 import SalesTrendChart from "./widgets/SalesTrendChart";
 
 type Summary = {
@@ -283,9 +284,11 @@ export default function DashboardPage() {
                                 <PackageRankingWidget />
 
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                    <SalesChannelWidget />
                                     <ConversionWidget />
-                                    <TopCategoriesWidget />
                                 </div>
+
+                                <TopCategoriesWidget />
                             </div>
                         </div>
                     )}

@@ -14,6 +14,10 @@ type Product = {
     prod_id: string; prod_name: string; prod_price: number; prod_is_free: boolean; prod_cover_url: string | null;
     prod_entitlement_duration_months: number | null;
 };
+type Package = {
+    pkg_id: string; pkg_name: string; pkg_price: number; pkg_cover_url: string | null;
+    product_count: number; individual_total: number;
+};
 type CouponInfo = { cpn_id: string; cpn_code: string; cpn_discount_type: "percent" | "fixed"; cpn_discount_value: number };
 type CouponRow = { cpn_code: string; cpn_discount_type: "percent" | "fixed"; cpn_discount_value: number };
 
@@ -51,6 +55,16 @@ async function fetchPublishedProducts(params: { limit: number; offset: number; s
     return res.json() as Promise<{ data: Product[]; total: number }>;
 }
 
+async function fetchPublishedPackages(params: { limit: number; offset: number; search: string }) {
+    const query = new URLSearchParams({
+        limit: String(params.limit), offset: String(params.offset),
+        search: params.search, status: "published",
+    });
+    const res = await fetch(`${api}/packages?${query}`, { headers: authHeader() });
+    if (!res.ok) return { data: [] as Package[], total: 0 };
+    return res.json() as Promise<{ data: Package[]; total: number }>;
+}
+
 async function validateCoupon(code: string): Promise<CouponInfo> {
     const res = await fetch(`${api}/coupons/validate/${encodeURIComponent(code.trim())}`, { headers: authHeader() });
     const data = await res.json().catch(() => ({}));
@@ -70,15 +84,16 @@ async function loadCouponOptions(search: string) {
     }));
 }
 
-async function grantProducts(customerId: string, productIds: string[], durationMonths: string, couponCode: string) {
+// โหมดแพ็กเกจส่งแค่ package_id — backend จะแตกเป็นสิทธิ์รายชิ้นเองพร้อมคิดส่วนลดจากราคาแพ็กเกจ
+// (ห้ามแตกเป็น product_ids ฝั่งนี้แล้วส่งไปเอง ไม่งั้นยอดขายที่บันทึกจะเป็นราคาเต็มไม่ใช่ราคาแพ็กเกจ)
+async function grantEntitlements(
+    customerId: string,
+    body: { product_ids?: string[]; package_id?: string; duration_months: number | null; coupon_code: string | null }
+) {
     const res = await fetch(`${api}/customers/${customerId}/entitlements`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...authHeader() },
-        body: JSON.stringify({
-            product_ids: productIds,
-            duration_months: durationMonths ? Number(durationMonths) : null,
-            coupon_code: couponCode || null,
-        }),
+        body: JSON.stringify(body),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.message ?? "เกิดข้อผิดพลาด");
@@ -97,6 +112,12 @@ type Props = {
 // เก็บ selected เป็น Map<id, Product> แทน Set<id> เพราะต้องคำนวณราคารวมของสิ่งที่เลือกไว้
 // ข้ามหน้า (pagination) ได้ — ถ้าเก็บแค่ id เฉยๆ จะไม่มีราคาของ item ที่เลือกจากหน้าอื่นมาคำนวณ
 export default function GrantProductsModal({ open, customerId, onClose, onDone }: Props) {
+    // เลือกได้ทีละโหมด: ให้สิทธิ์รายชุด หรือให้ทั้งแพ็กเกจ — แพ็กเกจเลือกได้ทีละอันเดียว เพราะราคาแพ็กเกจ
+    // เป็นราคาเหมาของทั้งก้อน เลือกสองแพ็กเกจพร้อมกันแล้วไม่มีคำตอบเดียวว่าส่วนลดรวมควรเป็นเท่าไร
+    const [mode, setMode] = useState<"product" | "package">("product");
+    const [packages, setPackages] = useState<Package[]>([]);
+    const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
+
     const [products, setProducts] = useState<Product[]>([]);
     const [total, setTotal] = useState(0);
     const [page, setPage] = useState(1);
@@ -120,6 +141,7 @@ export default function GrantProductsModal({ open, customerId, onClose, onDone }
             // eslint-disable-next-line react-hooks/set-state-in-effect -- ต้อง reset ให้เสร็จก่อน fetch async เริ่ม กันข้อมูลของลูกค้าคนก่อนค้างโชว์
             setSelected(new Map()); setSearch(""); setPage(1); setDuration("12"); setDurationTouched(false);
             setCouponValue(""); setCoupon(null); setCouponError(null);
+            setMode("product"); setSelectedPackage(null);
         }
     }, [open, customerId]);
 
@@ -127,10 +149,23 @@ export default function GrantProductsModal({ open, customerId, onClose, onDone }
         if (!open) return;
         // eslint-disable-next-line react-hooks/set-state-in-effect -- ต้องตั้ง loading ก่อน fetch async เริ่ม
         setLoading(true);
-        fetchPublishedProducts({ limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE, search })
-            .then((result) => { setProducts(result.data); setTotal(result.total); })
-            .finally(() => setLoading(false));
-    }, [open, page, search]);
+        const params = { limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE, search };
+        const request = mode === "package"
+            ? fetchPublishedPackages(params).then((r) => { setPackages(r.data); setTotal(r.total); })
+            : fetchPublishedProducts(params).then((r) => { setProducts(r.data); setTotal(r.total); });
+        request.finally(() => setLoading(false));
+    }, [open, page, search, mode]);
+
+    // สลับโหมดแล้วต้องล้างสิ่งที่เลือกไว้ของอีกโหมด + คูปอง (แพ็กเกจใช้คูปองร่วมด้วยไม่ได้ backend ปฏิเสธอยู่แล้ว)
+    function handleModeChange(next: "product" | "package") {
+        if (next === mode) return;
+        setMode(next);
+        setPage(1);
+        setSearch("");
+        setSelected(new Map());
+        setSelectedPackage(null);
+        setCouponValue(""); setCoupon(null); setCouponError(null);
+    }
 
     // ค่า duration ที่ "โดยนัย" จาก product ที่เลือกอยู่ตอนนี้ — มีค่าเฉพาะตอนเลือกอย่างน้อย 1 ชุด และทุกชุด
     // ที่เลือกมี default ตรงกันหมด (เลือกหลายชุดที่ default ต่างกัน = ไม่มีคำตอบเดียวที่ถูกต้อง ปล่อยว่างไว้
@@ -193,11 +228,18 @@ export default function GrantProductsModal({ open, customerId, onClose, onDone }
     }
 
     async function handleSubmit() {
-        if (selected.size === 0) return;
+        if (!canSubmit) return;
         setSubmitting(true);
         try {
-            await grantProducts(customerId, [...selected.keys()], duration, coupon?.cpn_code ?? "");
-            toast.success(`ให้สิทธิ์สำเร็จ ${selected.size} ชุด`);
+            const durationMonths = duration ? Number(duration) : null;
+            const result = mode === "package"
+                ? await grantEntitlements(customerId, { package_id: selectedPackage!.pkg_id, duration_months: durationMonths, coupon_code: null })
+                : await grantEntitlements(customerId, {
+                    product_ids: [...selected.keys()],
+                    duration_months: durationMonths,
+                    coupon_code: coupon?.cpn_code ?? null,
+                });
+            toast.success(result.message ?? "ให้สิทธิ์สำเร็จ");
             onDone?.();
             onClose();
         } catch (err) {
@@ -210,13 +252,27 @@ export default function GrantProductsModal({ open, customerId, onClose, onDone }
     if (!open) return null;
 
     const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-    const subtotal = [...selected.values()].reduce((sum, p) => sum + effectivePrice(p), 0);
-    const discount = coupon
-        ? coupon.cpn_discount_type === "percent"
-            ? subtotal * (Number(coupon.cpn_discount_value) / 100)
-            : Math.min(subtotal, Number(coupon.cpn_discount_value))
-        : 0;
+
+    // สูตรต้องตรงกับ backend เป๊ะ (entitlement.controller.js: createBatch/recordSale) ไม่งั้นตัวเลขที่แอดมิน
+    // เห็นตอนกดให้สิทธิ์ กับยอดขายที่ถูกบันทึกจริงจะไม่ตรงกัน
+    //   โหมดแพ็กเกจ  — ส่วนลด = ราคารวมถ้าซื้อแยก - ราคาแพ็กเกจ, ยอดสุทธิ = ราคาแพ็กเกจ
+    //   โหมดรายชุด   — ส่วนลดมาจากคูปอง (ถ้ามี)
+    const isPackageMode = mode === "package";
+    const subtotal = isPackageMode
+        ? Number(selectedPackage?.individual_total ?? 0)
+        : [...selected.values()].reduce((sum, p) => sum + effectivePrice(p), 0);
+    // ไม่ครอบ max(0) ให้ตรงกับ backend — แพ็กเกจที่ตั้งราคาสูงกว่าราคารวมถ้าซื้อแยก จะได้ค่าติดลบ
+    // (= ค่าเพิ่ม) และยอดสุทธิออกมาเท่าราคาแพ็กเกจพอดี ตัวเลขที่แอดมินเห็นจึงตรงกับที่บันทึกจริงเสมอ
+    const discount = isPackageMode
+        ? subtotal - Number(selectedPackage?.pkg_price ?? 0)
+        : coupon
+          ? coupon.cpn_discount_type === "percent"
+              ? subtotal * (Number(coupon.cpn_discount_value) / 100)
+              : Math.min(subtotal, Number(coupon.cpn_discount_value))
+          : 0;
     const grandTotal = Math.max(0, subtotal - discount);
+    const selectedCount = isPackageMode ? (selectedPackage?.product_count ?? 0) : selected.size;
+    const canSubmit = isPackageMode ? !!selectedPackage : selected.size > 0;
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
@@ -227,14 +283,39 @@ export default function GrantProductsModal({ open, customerId, onClose, onDone }
                         <PackageCheck className="w-4.5 h-4.5 text-blue-500" />
                     </div>
                     <div className="min-w-0">
-                        <h2 className="text-base font-semibold text-gray-800">เพิ่มสิทธิ์ชุดข้อสอบ</h2>
-                        <p className="text-xs text-gray-400">เลือกชุดข้อสอบที่เผยแพร่แล้ว — เลือกได้หลายชุด</p>
+                        <h2 className="text-base font-semibold text-gray-800">เพิ่มสิทธิ์ให้ลูกค้า</h2>
+                        <p className="text-xs text-gray-400">
+                            {isPackageMode ? "เลือกแพ็กเกจ 1 ชุด — ระบบจะแตกเป็นสิทธิ์รายชุดให้เอง" : "เลือกชุดข้อสอบที่เผยแพร่แล้ว — เลือกได้หลายชุด"}
+                        </p>
+                    </div>
+                </div>
+
+                {/* แท็บสลับโหมด */}
+                <div className="px-6 pb-3 shrink-0">
+                    <div className="flex gap-1 p-1 rounded-xl bg-gray-100">
+                        {([["product", "ชุดข้อสอบ"], ["package", "แพ็กเกจ"]] as const).map(([value, label]) => (
+                            <button
+                                key={value}
+                                type="button"
+                                onClick={() => handleModeChange(value)}
+                                className={`flex-1 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                                    mode === value ? "bg-white text-gray-800 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                                }`}
+                            >
+                                {label}
+                            </button>
+                        ))}
                     </div>
                 </div>
 
                 {/* search + list */}
                 <div className="px-6 pb-2 shrink-0">
-                    <SearchInput value={search} onChange={handleSearch} placeholder="ค้นหาชุดข้อสอบ..." className="w-full" />
+                    <SearchInput
+                        value={search}
+                        onChange={handleSearch}
+                        placeholder={isPackageMode ? "ค้นหาแพ็กเกจ..." : "ค้นหาชุดข้อสอบ..."}
+                        className="w-full"
+                    />
                 </div>
 
                 {/* ส่วนที่เหลือทั้งหมด (รายการ+เพจ+footer) อยู่ใน scroll container เดียวกัน กันปุ่มด้านล่าง
@@ -244,6 +325,52 @@ export default function GrantProductsModal({ open, customerId, onClose, onDone }
                     <div className="px-4 min-h-70">
                         {loading ? (
                             <p className="text-sm text-gray-400 py-10 text-center">กำลังโหลด...</p>
+                        ) : isPackageMode ? (
+                            packages.length === 0 ? (
+                                <p className="text-sm text-gray-400 py-10 text-center">ไม่พบแพ็กเกจที่เผยแพร่แล้ว</p>
+                            ) : (
+                                <div className="space-y-0.5 pb-2">
+                                    {packages.map((pkg) => {
+                                        const isSelected = selectedPackage?.pkg_id === pkg.pkg_id;
+                                        const savings = Math.max(0, Number(pkg.individual_total) - Number(pkg.pkg_price));
+                                        return (
+                                            <button
+                                                key={pkg.pkg_id}
+                                                type="button"
+                                                // เลือกได้ทีละอัน กดซ้ำที่อันเดิม = ยกเลิกการเลือก
+                                                onClick={() => setSelectedPackage(isSelected ? null : pkg)}
+                                                className={`w-full flex items-center gap-3 p-2 rounded-xl text-left transition-colors ${
+                                                    isSelected ? "bg-blue-50" : "hover:bg-gray-50"
+                                                }`}
+                                            >
+                                                <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-gray-100 shrink-0">
+                                                    <Image
+                                                        src={pkg.pkg_cover_url ? `${SERVER_BASE}${pkg.pkg_cover_url}` : "/defult.png"}
+                                                        alt=""
+                                                        fill
+                                                        unoptimized={!!pkg.pkg_cover_url}
+                                                        className="object-cover"
+                                                    />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-sm font-medium text-gray-800 truncate">{pkg.pkg_name}</p>
+                                                    <p className="text-xs text-gray-400">
+                                                        {pkg.product_count} ชุด · {formatBaht(pkg.pkg_price)}
+                                                        {savings > 0 && <span className="text-green-600"> (ประหยัด {formatBaht(savings)})</span>}
+                                                    </p>
+                                                </div>
+                                                <div
+                                                    className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 transition-colors ${
+                                                        isSelected ? "bg-blue-500" : "bg-gray-100"
+                                                    }`}
+                                                >
+                                                    {isSelected && <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />}
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )
                         ) : products.length === 0 ? (
                             <p className="text-sm text-gray-400 py-10 text-center">ไม่พบชุดข้อสอบที่เผยแพร่แล้ว</p>
                         ) : (
@@ -310,8 +437,9 @@ export default function GrantProductsModal({ open, customerId, onClose, onDone }
 
                     {/* footer */}
                     <div className="px-6 py-4 border-t border-gray-100 space-y-3 shrink-0 sticky bottom-0 bg-white">
-                        {/* โค้ดส่วนลด */}
-                        {coupon ? (
+                        {/* โค้ดส่วนลด — ซ่อนในโหมดแพ็กเกจ เพราะส่วนลดมาจากราคาแพ็กเกจอยู่แล้ว
+                            ใช้ซ้อนกันไม่ได้ (backend ปฏิเสธ) จะเป็นการลดสองชั้นโดยไม่ตั้งใจ */}
+                        {isPackageMode ? null : coupon ? (
                             <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-green-50 border border-green-100">
                                 <span className="inline-flex items-center gap-1.5 text-sm text-green-700 font-medium">
                                     <Tag className="w-3.5 h-3.5" /> {coupon.cpn_code}
@@ -339,13 +467,29 @@ export default function GrantProductsModal({ open, customerId, onClose, onDone }
                         )}
 
                         {/* สรุปราคา */}
-                        {selected.size > 0 && (
+                        {canSubmit && (
                             <div className="text-sm space-y-0.5">
                                 <div className="flex items-center justify-between text-gray-500">
-                                    <span>ยอดรวม {selected.size} ชุด</span>
+                                    <span>{isPackageMode ? `ราคารวมถ้าซื้อแยก ${selectedCount} ชุด` : `ยอดรวม ${selectedCount} ชุด`}</span>
                                     <span>{formatBaht(subtotal)}</span>
                                 </div>
-                                {coupon && (
+                                {isPackageMode ? (
+                                    discount !== 0 && (
+                                        discount > 0 ? (
+                                            <div className="flex items-center justify-between text-green-600">
+                                                <span>ส่วนลดแพ็กเกจ</span>
+                                                <span>-{formatBaht(discount)}</span>
+                                            </div>
+                                        ) : (
+                                            // แพ็กเกจที่ตั้งราคาสูงกว่าผลรวมชุดข้างใน — บอกให้ชัดว่าแพงกว่าซื้อแยก
+                                            // จะได้รู้ตัวว่าตั้งราคาผิดหรือตั้งใจตั้งแบบนั้น
+                                            <div className="flex items-center justify-between text-amber-600">
+                                                <span>แพงกว่าซื้อแยก</span>
+                                                <span>+{formatBaht(-discount)}</span>
+                                            </div>
+                                        )
+                                    )
+                                ) : coupon && (
                                     <div className="flex items-center justify-between text-green-600">
                                         <span>ส่วนลด ({coupon.cpn_code})</span>
                                         <span>-{formatBaht(discount)}</span>
@@ -386,11 +530,11 @@ export default function GrantProductsModal({ open, customerId, onClose, onDone }
                             <button
                                 type="button"
                                 onClick={handleSubmit}
-                                disabled={selected.size === 0 || submitting}
+                                disabled={!canSubmit || submitting}
                                 className="inline-flex items-center gap-1.5 px-5 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg shadow-sm transition-colors"
                             >
                                 <Check className="w-4 h-4" />
-                                {submitting ? "กำลังบันทึก..." : `ให้สิทธิ์${selected.size > 0 ? ` (${selected.size})` : ""}`}
+                                {submitting ? "กำลังบันทึก..." : `ให้สิทธิ์${canSubmit ? ` (${selectedCount})` : ""}`}
                             </button>
                         </div>
                     </div>

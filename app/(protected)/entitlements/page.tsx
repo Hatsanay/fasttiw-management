@@ -3,14 +3,14 @@
 import { useEffect, useState, useTransition } from "react";
 import { api } from "@/app/constans";
 import { authHeader } from "@/app/lib/auth";
-import formatDate from "@/app/function";
-import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import formatDate, { formatBaht } from "@/app/function";
 import SearchInput from "@/components/ui/SearchInput";
 import Pagination from "@/components/ui/Pagination";
 import { useRouter } from "next/navigation";
 import { usePermission, BITS } from "@/app/components/permission-provider";
 import { toast } from "sonner";
-import { Ban, User } from "lucide-react";
+import { Ban, User, RotateCcw, CalendarClock } from "lucide-react";
+import RevokeEntitlementDialog, { type RevokeReason, type RevokeTarget } from "@/components/ui/RevokeEntitlementDialog";
 
 type EntitlementRow = {
     ent_id: string;
@@ -19,6 +19,10 @@ type EntitlementRow = {
     ent_granted_at: string;
     ent_expires_at: string | null;
     effective_status: "active" | "expired" | "revoked";
+    // ข้อมูลฝั่งเงิน ใช้ตัดสินว่าเปิดตัวเลือกยกเลิกแบบไหนได้บ้าง (ดู RevokeEntitlementDialog)
+    sale_amount: string | null;
+    rolls_back_to: string | null;
+    can_refund_gateway: number | boolean;
 };
 
 type CustomerGroup = {
@@ -27,8 +31,6 @@ type CustomerGroup = {
     cus_fullname: string | null;
     entitlements: EntitlementRow[];
 };
-
-type RevokeTarget = { ent_id: string; prod_name: string; cus_username: string };
 
 const GRANTED_VIA_LABEL: Record<EntitlementRow["ent_granted_via"], string> = {
     manual: "แอดมินให้เอง",
@@ -73,6 +75,10 @@ export default function EntitlementsPage() {
     const [pageSize, setPageSize] = useState(10);
 
     const [revokeTarget, setRevokeTarget] = useState<RevokeTarget | null>(null);
+    // รายการที่กำลังแก้วันหมดอายุ — ว่าง = ไม่มีวันหมดอายุ
+    const [expiryTarget, setExpiryTarget] = useState<EntitlementRow | null>(null);
+    const [expiryValue, setExpiryValue] = useState("");
+    const [isSavingExpiry, setIsSavingExpiry] = useState(false);
     const [isRevoking, setIsRevoking] = useState(false);
 
     function reload() {
@@ -100,24 +106,68 @@ export default function EntitlementsPage() {
         setPage(1);
     }
 
-    async function handleRevoke() {
+    async function handleRevoke(reason: RevokeReason) {
         if (!revokeTarget) return;
         setIsRevoking(true);
         try {
             const res = await fetch(`${api}/entitlements/${revokeTarget.ent_id}/revoke`, {
                 method: "PUT",
-                headers: authHeader(),
+                headers: { "Content-Type": "application/json", ...authHeader() },
+                body: JSON.stringify({ reason }),
             });
-            if (res.ok) {
-                toast.success(`ยกเลิกสิทธิ์ "${revokeTarget.prod_name}" ของ ${revokeTarget.cus_username} สำเร็จ`);
-                reload();
-            } else {
-                const data = await res.json().catch(() => ({}));
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                // ไม่ปิด dialog ตอน error — แอดมินจะได้เลือกเหตุผลอื่นต่อได้เลยโดยไม่ต้องหารายการเดิมใหม่
                 toast.error(data.message ?? "ยกเลิกไม่สำเร็จ กรุณาลองใหม่");
+                return;
             }
+
+            toast.success(data.message ?? "ยกเลิกสิทธิ์สำเร็จ");
+            // เตือนแยกอีกอันเพราะเป็นสิ่งที่แอดมิน "ต้องไปทำต่อ" ไม่ใช่แค่ผลลัพธ์
+            if (data.needs_manual_transfer) {
+                toast.warning(`อย่าลืมโอนเงินคืนลูกค้า ${formatBaht(data.reversed_amount)} เอง — ระบบทำแทนไม่ได้`, { duration: 8000 });
+            }
+            if (data.gateway_fee_not_returned > 0) {
+                toast.warning(`ค่าธรรมเนียม ${formatBaht(data.gateway_fee_not_returned)} ไม่ได้คืนกลับมาจาก Stripe`, { duration: 8000 });
+            }
+            setRevokeTarget(null);
+            reload();
         } finally {
             setIsRevoking(false);
-            setRevokeTarget(null);
+        }
+    }
+
+    // คืนสิทธิ์ที่ยกเลิกไป — ไม่ยุ่งกับเงิน ใช้ตอนกดผิดปุ่ม
+    async function handleRestore(ent: EntitlementRow, username: string) {
+        const res = await fetch(`${api}/entitlements/${ent.ent_id}/restore`, { method: "PUT", headers: authHeader() });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok) {
+            toast.success(`คืนสิทธิ์ "${ent.prod_name}" ของ ${username} สำเร็จ`);
+            reload();
+        } else {
+            toast.error(data.message ?? "คืนสิทธิ์ไม่สำเร็จ");
+        }
+    }
+
+    async function handleSaveExpiry() {
+        if (!expiryTarget) return;
+        setIsSavingExpiry(true);
+        try {
+            const res = await fetch(`${api}/entitlements/${expiryTarget.ent_id}/expiry`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json", ...authHeader() },
+                body: JSON.stringify({ expires_at: expiryValue || null }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (res.ok) {
+                toast.success(data.message ?? "บันทึกสำเร็จ");
+                setExpiryTarget(null);
+                reload();
+            } else {
+                toast.error(data.message ?? "บันทึกไม่สำเร็จ");
+            }
+        } finally {
+            setIsSavingExpiry(false);
         }
     }
 
@@ -175,14 +225,46 @@ export default function EntitlementsPage() {
                                         <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${STATUS_BADGE[ent.effective_status]}`}>
                                             {STATUS_LABEL[ent.effective_status]}
                                         </span>
-                                        {hasBit(BITS.editCustomer) && ent.effective_status === "active" && (
-                                            <button
-                                                onClick={() => setRevokeTarget({ ent_id: ent.ent_id, prod_name: ent.prod_name, cus_username: group.cus_username })}
-                                                title="ยกเลิกสิทธิ์"
-                                                className="shrink-0 p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                                            >
-                                                <Ban className="w-3.5 h-3.5" />
-                                            </button>
+                                        {hasBit(BITS.editCustomer) && (
+                                            <div className="flex items-center gap-1 shrink-0">
+                                                {ent.effective_status !== "revoked" && (
+                                                    <button
+                                                        onClick={() => {
+                                                            setExpiryTarget(ent);
+                                                            // input type=date รับได้เฉพาะ YYYY-MM-DD — ตัดเวลาออกก่อนเสมอ
+                                                            setExpiryValue(ent.ent_expires_at ? ent.ent_expires_at.slice(0, 10) : "");
+                                                        }}
+                                                        title="แก้วันหมดอายุ"
+                                                        className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                    >
+                                                        <CalendarClock className="w-3.5 h-3.5" />
+                                                    </button>
+                                                )}
+                                                {ent.effective_status === "revoked" ? (
+                                                    <button
+                                                        onClick={() => handleRestore(ent, group.cus_username)}
+                                                        title="คืนสิทธิ์"
+                                                        className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                                                    >
+                                                        <RotateCcw className="w-3.5 h-3.5" />
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => setRevokeTarget({
+                                                            ent_id: ent.ent_id,
+                                                            prod_name: ent.prod_name,
+                                                            cus_username: group.cus_username,
+                                                            sale_amount: ent.sale_amount,
+                                                            can_refund_gateway: !!ent.can_refund_gateway,
+                                                            rolls_back_to: ent.rolls_back_to,
+                                                        })}
+                                                        title="ยกเลิกสิทธิ์"
+                                                        className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                                    >
+                                                        <Ban className="w-3.5 h-3.5" />
+                                                    </button>
+                                                )}
+                                            </div>
                                         )}
                                     </div>
                                 ))}
@@ -203,16 +285,56 @@ export default function EntitlementsPage() {
                 </div>
             )}
 
-            <ConfirmDialog
-                open={!!revokeTarget}
-                variant="warning"
-                title="ยกเลิกสิทธิ์นี้?"
-                description={revokeTarget ? `"${revokeTarget.prod_name}" ของ ${revokeTarget.cus_username} จะถูกยกเลิกทันที ลูกค้าจะเข้าทำข้อสอบชุดนี้ไม่ได้อีก` : undefined}
-                confirmLabel="ยกเลิกสิทธิ์"
+            <RevokeEntitlementDialog
+                key={revokeTarget?.ent_id}
+                target={revokeTarget}
                 loading={isRevoking}
                 onConfirm={handleRevoke}
                 onCancel={() => setRevokeTarget(null)}
             />
+
+            {expiryTarget && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+                        <div className="px-6 pt-6 pb-4 flex items-start gap-3">
+                            <div className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
+                                <CalendarClock className="w-4.5 h-4.5 text-blue-500" />
+                            </div>
+                            <div className="min-w-0">
+                                <h2 className="text-base font-semibold text-gray-800">แก้วันหมดอายุ</h2>
+                                <p className="text-xs text-gray-400 truncate">{expiryTarget.prod_name}</p>
+                            </div>
+                        </div>
+                        <div className="px-6 pb-4">
+                            <input
+                                type="date"
+                                value={expiryValue}
+                                onChange={(e) => setExpiryValue(e.target.value)}
+                                className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:border-blue-400 focus:ring-blue-500/20"
+                            />
+                            <p className="text-xs text-gray-400 mt-1.5">เว้นว่างไว้ = ไม่มีวันหมดอายุ · ไม่กระทบยอดขายที่บันทึกไว้แล้ว</p>
+                        </div>
+                        <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setExpiryTarget(null)}
+                                disabled={isSavingExpiry}
+                                className="px-3 py-2 text-sm text-gray-500 hover:text-gray-700 disabled:opacity-50"
+                            >
+                                ยกเลิก
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleSaveExpiry}
+                                disabled={isSavingExpiry}
+                                className="px-5 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-40 rounded-lg shadow-sm transition-colors"
+                            >
+                                {isSavingExpiry ? "กำลังบันทึก..." : "บันทึก"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

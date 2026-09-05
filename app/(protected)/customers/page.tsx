@@ -9,6 +9,8 @@ import Button from "@/components/ui/Button/Button";
 import EditButton from "@/components/ui/Button/EditButton";
 import DeleteButton from "@/components/ui/Button/DeleteButton";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import GrantProductsModal from "@/components/ui/GrantProductsModal";
+import { PackagePlus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { usePermission, BITS } from "@/app/components/permission-provider";
 import { toast } from "sonner";
@@ -74,6 +76,8 @@ export default function CustomersPage() {
     const [search, setSearch] = useState("");
     const [pageSize, setPageSize] = useState(10);
 
+    // ลูกค้าที่กำลังจะเพิ่มสิทธิ์ให้ (null = ปิด modal) — ใช้ modal ตัวเดียวกับตอนสร้างลูกค้าใหม่
+    const [grantTarget, setGrantTarget] = useState<Customer | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<Customer | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
 
@@ -171,6 +175,16 @@ export default function CustomersPage() {
                 actions={(row) => (
                     <div className="flex items-center gap-2 justify-end">
                         {hasBit(BITS.editCustomer) && (
+                            <button
+                                type="button"
+                                onClick={() => setGrantTarget(row)}
+                                title="เพิ่มสิทธิ์ (ชุดข้อสอบ / แพ็กเกจ)"
+                                className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                            >
+                                <PackagePlus className="w-4 h-4" />
+                            </button>
+                        )}
+                        {hasBit(BITS.editCustomer) && (
                             <EditButton onClick={() => router.push(`/customers/edit?id=${row.cus_id}`)} />
                         )}
                         {hasBit(BITS.deleteCustomer) && (
@@ -178,6 +192,13 @@ export default function CustomersPage() {
                         )}
                     </div>
                 )}
+            />
+
+            <GrantProductsModal
+                open={!!grantTarget}
+                customerId={grantTarget?.cus_id ?? ""}
+                onClose={() => setGrantTarget(null)}
+                onDone={reload}
             />
 
             <ConfirmDialog

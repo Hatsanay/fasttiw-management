@@ -9,6 +9,7 @@ import Button from "@/components/ui/Button/Button";
 import Input from "@/components/ui/Input/input";
 import SearchableSelect from "@/components/ui/SearchableSelect";
 import DragDropImage from "@/components/ui/DragDropImage";
+import { validateTotalScoreInput, MAX_TOTAL_SCORE, formatScore } from "@/app/lib/scoring";
 
 type Product = {
     prod_id: string;
@@ -25,6 +26,8 @@ type Product = {
     prod_commission_value: number | null;
     prod_exam_duration_minutes: number;
     prod_entitlement_duration_months: number | null;
+    prod_total_score: string | number | null;
+    used_score: string | number;
 };
 
 async function fetchProductById(id: string): Promise<Product | null> {
@@ -55,13 +58,14 @@ async function loadStaffOptions(search: string) {
 const SERVER_BASE = new URL(api).origin;
 
 type FormErrors = {
-    prod_name?: string; prod_price?: string; prod_compare_price?: string; exam_duration?: string; commission_value?: string; entitlement_duration?: string;
+    prod_name?: string; prod_price?: string; prod_compare_price?: string; exam_duration?: string; commission_value?: string; entitlement_duration?: string; total_score?: string;
 };
 
 function validate(
     prodName: string, prodPrice: string, prodComparePrice: string, isFree: boolean, examDuration: string,
     commissionStaffId: string, commissionType: "percent" | "fixed", commissionValue: string,
-    entitlementLifetime: boolean, entitlementDuration: string
+    entitlementLifetime: boolean, entitlementDuration: string,
+    useScoring: boolean, totalScore: string, usedScore: number
 ): FormErrors {
     const errors: FormErrors = {};
 
@@ -85,6 +89,16 @@ function validate(
     const durationNum = Number(examDuration);
     if (!examDuration.trim() || !Number.isInteger(durationNum) || durationNum < 1 || durationNum > 600) {
         errors.exam_duration = "เวลาสอบต้องเป็นจำนวนเต็ม 1-600 นาที";
+    }
+
+    if (useScoring) {
+        const scoreError = validateTotalScoreInput(totalScore);
+        if (scoreError) errors.total_score = scoreError;
+        // เตือนตั้งแต่ในฟอร์มว่าคะแนนเต็มใหม่ต่ำกว่าที่ข้อต่างๆ ใช้ไปแล้ว (backend ก็ปฏิเสธเหมือนกัน
+        // แต่บอกที่นี่ก่อนจะได้ไม่ต้องกดบันทึกแล้วเด้ง error กลับมา)
+        else if (Number(totalScore) < usedScore) {
+            errors.total_score = `คะแนนเต็มต้องไม่ต่ำกว่าคะแนนที่ข้อต่างๆ ใช้ไปแล้ว (${formatScore(usedScore)} คะแนน)`;
+        }
     }
 
     if (!entitlementLifetime) {
@@ -121,6 +135,10 @@ export default function EditProductPage() {
     const [examDuration, setExamDuration] = useState("60");
     const [entitlementLifetime, setEntitlementLifetime] = useState(true);
     const [entitlementDuration, setEntitlementDuration] = useState("12");
+    const [useScoring, setUseScoring] = useState(false);
+    const [totalScore, setTotalScore] = useState("100");
+    // ผลรวมคะแนนของข้อที่ active อยู่ตอนนี้ (มาจาก backend) ใช้เตือนตอนแอดมินจะลดคะแนนเต็มลง
+    const [usedScore, setUsedScore] = useState(0);
     const [prodStatus, setProdStatus] = useState<Product["prod_status"]>("draft");
     const [prodCategoryId, setProdCategoryId] = useState("");
     const [commissionStaffId, setCommissionStaffId] = useState("");
@@ -172,6 +190,16 @@ export default function EditProductPage() {
         if (errors.entitlement_duration) setErrors((prev) => ({ ...prev, entitlement_duration: undefined }));
     }
 
+    function handleUseScoringChange(e: React.ChangeEvent<HTMLInputElement>) {
+        setUseScoring(e.target.checked);
+        if (errors.total_score) setErrors((prev) => ({ ...prev, total_score: undefined }));
+    }
+
+    function handleTotalScoreChange(e: React.ChangeEvent<HTMLInputElement>) {
+        setTotalScore(e.target.value);
+        if (errors.total_score) setErrors((prev) => ({ ...prev, total_score: undefined }));
+    }
+
     function handleCommissionStaffChange(v: string) {
         setCommissionStaffId(v);
         if (!v && errors.commission_value) setErrors((prev) => ({ ...prev, commission_value: undefined }));
@@ -190,6 +218,9 @@ export default function EditProductPage() {
             setExamDuration(String(data.prod_exam_duration_minutes ?? 60));
             setEntitlementLifetime(data.prod_entitlement_duration_months == null);
             setEntitlementDuration(data.prod_entitlement_duration_months != null ? String(data.prod_entitlement_duration_months) : "12");
+            setUseScoring(data.prod_total_score != null);
+            setTotalScore(data.prod_total_score != null ? formatScore(data.prod_total_score) : "100");
+            setUsedScore(Number(data.used_score) || 0);
             setProdStatus(data.prod_status);
             setProdCategoryId(data.prod_category_id ?? "");
             setCommissionStaffId(data.prod_commission_staff_id ?? "");
@@ -205,7 +236,8 @@ export default function EditProductPage() {
 
         const fieldErrors = validate(
             prodName, prodPrice, prodComparePrice, isFree, examDuration, commissionStaffId, commissionType, commissionValue,
-            entitlementLifetime, entitlementDuration
+            entitlementLifetime, entitlementDuration,
+            useScoring, totalScore, usedScore
         );
         if (Object.keys(fieldErrors).length > 0) { setErrors(fieldErrors); return; }
 
@@ -221,6 +253,7 @@ export default function EditProductPage() {
                     prod_is_free: isFree,
                     prod_exam_duration_minutes: Number(examDuration) || 60,
                     prod_entitlement_duration_months: entitlementLifetime ? null : Number(entitlementDuration),
+                    prod_total_score: useScoring ? Number(totalScore) : null,
                     prod_status: prodStatus,
                     prod_category_id: prodCategoryId || null,
                     prod_commission_staff_id: commissionStaffId || null,
@@ -327,6 +360,39 @@ export default function EditProductPage() {
                         error={!!errors.exam_duration}
                     />
                     {errors.exam_duration && <p className="text-xs text-red-500 mt-1">{errors.exam_duration}</p>}
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">คะแนนเต็มของชุดข้อสอบ</label>
+                    <label className="flex items-center gap-2 cursor-pointer w-fit mb-2">
+                        <input
+                            type="checkbox"
+                            checked={useScoring}
+                            onChange={handleUseScoringChange}
+                            className="w-4 h-4 accent-blue-500"
+                        />
+                        <span className="text-sm text-gray-700">กำหนดคะแนนเต็ม (ให้แต่ละข้อมีน้ำหนักคะแนนต่างกันได้)</span>
+                    </label>
+                    {useScoring && (
+                        <>
+                            <Input
+                                type="number" min={0} max={MAX_TOTAL_SCORE} step="0.01"
+                                value={totalScore}
+                                onChange={handleTotalScoreChange}
+                                className="w-40"
+                                placeholder="เช่น 100"
+                                error={!!errors.total_score}
+                            />
+                            {errors.total_score && <p className="text-xs text-red-500 mt-1">{errors.total_score}</p>}
+                            <p className="text-xs text-gray-500 mt-1">
+                                ตอนนี้คำถามในชุดนี้ใช้คะแนนไปแล้ว <span className="font-medium text-gray-700">{formatScore(usedScore)}</span> คะแนน
+                            </p>
+                        </>
+                    )}
+                    <p className="text-xs text-gray-400 mt-1">
+                        ไม่ติ๊ก = ไม่ใช้ระบบคะแนน ผลสอบคิดเป็น % จากจำนวนข้อที่ตอบถูก (พฤติกรรมเดิม) —
+                        การเปลี่ยนค่านี้ไม่กระทบผลสอบที่ลูกค้าทำไปแล้ว เพราะระบบบันทึกคะแนนเต็มไว้ตั้งแต่ตอนเริ่มทำข้อสอบ
+                    </p>
                 </div>
 
                 <div>

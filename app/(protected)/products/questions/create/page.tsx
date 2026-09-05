@@ -12,6 +12,7 @@ import SearchableSelect from "@/components/ui/SearchableSelect";
 import DragDropImage from "@/components/ui/DragDropImage";
 import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { validateQuestionScoreInput, formatScore, MAX_QUESTION_SCORE } from "@/app/lib/scoring";
 
 const MAX_CHOICES = 6;
 
@@ -20,10 +21,10 @@ const MAX_CHOICES = 6;
 // preview เป็น internal state ที่ผูกกับ key) โดน React reuse ข้ามแถว แสดงรูป preview ผิดคำถาม/ตัวเลือก
 type ChoiceForm = { key: string; text: string; isCorrect: boolean; wrongReason: string; imageFile: File | null };
 type QuestionForm = {
-    key: string; quesText: string; quesExplanation: string; quesTopicId: string; choices: ChoiceForm[]; imageFile: File | null;
+    key: string; quesText: string; quesExplanation: string; quesTopicId: string; quesScore: string; choices: ChoiceForm[]; imageFile: File | null;
 };
 
-type Product = { prod_id: string; prod_name: string; prod_category_id: string | null };
+type Product = { prod_id: string; prod_name: string; prod_category_id: string | null; prod_total_score: string | number | null; used_score: string | number };
 
 async function fetchProductById(id: string): Promise<Product | null> {
     const res = await fetch(`${api}/products/${id}`, { headers: authHeader() });
@@ -36,16 +37,23 @@ function emptyChoice(): ChoiceForm {
 }
 
 function emptyQuestion(): QuestionForm {
-    return { key: crypto.randomUUID(), quesText: "", quesExplanation: "", quesTopicId: "", choices: [emptyChoice(), emptyChoice()], imageFile: null };
+    return { key: crypto.randomUUID(), quesText: "", quesExplanation: "", quesTopicId: "", quesScore: "1", choices: [emptyChoice(), emptyChoice()], imageFile: null };
 }
 
 // ตรวจข้อเดียว คืน error message หรือ null ถ้าผ่าน — ใช้กฎเดียวกับฝั่ง backend
-function validateQuestion(q: QuestionForm): string | null {
+// useScoring = ชุดนี้เปิดระบบคะแนนไหม (ถ้าไม่เปิด ช่องคะแนนจะไม่แสดงและไม่ต้องตรวจ)
+function validateQuestion(q: QuestionForm, useScoring: boolean): string | null {
     if (!q.quesText.trim()) return "กรุณากรอกคำถาม";
     const filled = q.choices.filter((c) => c.text.trim());
     if (filled.length < 2) return "ต้องมีตัวเลือกอย่างน้อย 2 ข้อ";
     if (q.choices.some((c) => !c.text.trim())) return "กรุณากรอกข้อความของทุกตัวเลือก หรือลบตัวเลือกที่ไม่ใช้ออก";
     if (!q.choices.some((c) => c.isCorrect)) return "กรุณาเลือกตัวเลือกที่ถูก 1 ข้อ";
+    // ไม่ส่ง remaining เข้าไปตรงนี้ เพราะหน้านี้บันทึกหลายข้อพร้อมกัน ต้องเทียบผลรวมของทุกข้อทีเดียว
+    // (ดู handleSubmit) ไม่ใช่ทีละข้อ ไม่งั้นแต่ละข้อจะผ่านหมดทั้งที่รวมกันแล้วเกิน
+    if (useScoring) {
+        const scoreError = validateQuestionScoreInput(q.quesScore);
+        if (scoreError) return scoreError;
+    }
     return null;
 }
 
@@ -78,6 +86,12 @@ export default function CreateQuestionPage() {
             else setProduct(data);
         });
     }, [productId]);
+
+    // ชุดนี้เปิดระบบคะแนนไหม + เหลือโควตาเท่าไร (มาจาก product.getOne ของ backend)
+    const useScoring = product?.prod_total_score != null;
+    const remainingScore = useScoring
+        ? Math.round((Number(product!.prod_total_score) - Number(product!.used_score)) * 100) / 100
+        : 0;
 
     function updateQuestion(qIndex: number, patch: Partial<QuestionForm>) {
         setQuestions((prev) => prev.map((q, i) => (i === qIndex ? { ...q, ...patch } : q)));
@@ -136,12 +150,24 @@ export default function CreateQuestionPage() {
         const nextQuestionErrors: Record<string, string> = {};
         const clientErrors: string[] = [];
         questions.forEach((q, i) => {
-            const err = validateQuestion(q);
+            const err = validateQuestion(q, useScoring);
             if (err) {
                 nextQuestionErrors[q.key] = err;
                 clientErrors.push(`ข้อที่ ${i + 1}: ${err}`);
             }
         });
+
+        // เทียบผลรวมของทุกข้อที่กำลังจะบันทึกกับโควตาที่เหลือทีเดียว — บันทึกเป็น all-or-nothing อยู่แล้ว
+        // ถ้าเช็คทีละข้อจะผ่านข้อแรกๆ แล้วไปตกข้อท้าย ทั้งที่ผลลัพธ์คือไม่มีอะไรถูกบันทึกเหมือนกัน
+        if (useScoring && clientErrors.length === 0) {
+            const sum = questions.reduce((acc, q) => acc + Number(q.quesScore), 0);
+            if (sum > remainingScore) {
+                clientErrors.push(
+                    `คะแนนรวมของ ${questions.length} ข้อนี้ (${formatScore(sum)}) เกินคะแนนที่เหลือของชุดข้อสอบ (เหลือ ${formatScore(remainingScore)})`
+                );
+            }
+        }
+
         if (clientErrors.length > 0) { setQuestionErrors(nextQuestionErrors); setErrors(clientErrors); return; }
 
         startTransition(async () => {
@@ -153,6 +179,7 @@ export default function CreateQuestionPage() {
                         ques_text: q.quesText,
                         ques_explanation: q.quesExplanation || null,
                         ques_topic_id: q.quesTopicId || null,
+                        ques_score: useScoring ? Number(q.quesScore) : undefined,
                         choices: q.choices.map((c) => ({
                             cho_text: c.text,
                             cho_is_correct: c.isCorrect,
@@ -280,6 +307,19 @@ export default function CreateQuestionPage() {
                                 disabled={isPending}
                             />
                         </div>
+
+                        {useScoring && (
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">คะแนนของข้อนี้</label>
+                                <input
+                                    type="number" min={0} max={MAX_QUESTION_SCORE} step="0.01"
+                                    value={q.quesScore}
+                                    onChange={(e) => updateQuestion(qi, { quesScore: e.target.value })}
+                                    className="w-32 px-4 py-2 border rounded focus:outline-none focus:ring-2 border-gray-300 focus:border-blue-400 focus:ring-blue-500/20"
+                                />
+                                <p className="text-xs text-gray-400 mt-1">ชุดนี้เหลือโควตา {formatScore(remainingScore)} คะแนน</p>
+                            </div>
+                        )}
 
                         <div>
                             <div className="flex items-center justify-between mb-2">

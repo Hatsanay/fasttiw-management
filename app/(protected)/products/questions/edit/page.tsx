@@ -12,6 +12,7 @@ import SearchableSelect from "@/components/ui/SearchableSelect";
 import DragDropImage from "@/components/ui/DragDropImage";
 import { Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
+import { validateQuestionScoreInput, formatScore, MAX_QUESTION_SCORE } from "@/app/lib/scoring";
 
 const MAX_CHOICES = 6;
 const SERVER_BASE = new URL(api).origin;
@@ -38,6 +39,9 @@ type QuestionDetail = {
     ques_explanation: string | null;
     ques_image_url: string | null;
     ques_topic_id: string | null;
+    ques_score: string | number;
+    // โควตาคะแนนของชุด โดย used_score_excluding_this ไม่นับข้อนี้ (กำลังจะถูกแทนด้วยค่าใหม่)
+    scoring: { total_score: string | number | null; used_score_excluding_this: string | number };
     choices: { cho_id: string; cho_text: string; cho_is_correct: number | boolean; cho_wrong_reason: string | null; cho_image_url: string | null }[];
 };
 
@@ -57,12 +61,18 @@ function emptyChoice(): ChoiceForm {
     return { key: crypto.randomUUID(), cho_id: null, text: "", isCorrect: false, wrongReason: "", existingImageUrl: null, imageFile: null, imageRemoved: false };
 }
 
-type FormErrors = { ques_text?: string; choices?: string };
+type FormErrors = { ques_text?: string; choices?: string; ques_score?: string };
 
-function validate(quesText: string, choices: ChoiceForm[]): FormErrors {
+function validate(quesText: string, choices: ChoiceForm[], quesScore: string, remaining?: number): FormErrors {
     const errors: FormErrors = {};
 
     if (!quesText.trim()) errors.ques_text = "กรุณากรอกคำถาม";
+
+    // remaining เป็น undefined = ชุดนี้ไม่ใช้ระบบคะแนน ไม่ต้องตรวจช่องคะแนนเลย
+    if (remaining !== undefined) {
+        const scoreError = validateQuestionScoreInput(quesScore, remaining);
+        if (scoreError) errors.ques_score = scoreError;
+    }
 
     const filled = choices.filter((c) => c.text.trim());
     if (filled.length < 2) errors.choices = "ต้องมีตัวเลือกอย่างน้อย 2 ข้อ";
@@ -85,6 +95,9 @@ export default function EditQuestionPage() {
     const [quesText, setQuesText] = useState("");
     const [quesExplanation, setQuesExplanation] = useState("");
     const [quesTopicId, setQuesTopicId] = useState("");
+    const [quesScore, setQuesScore] = useState("1");
+    // null = ชุดนี้ไม่ใช้ระบบคะแนน (ซ่อนช่องกรอกคะแนนไปเลย)
+    const [remainingScore, setRemainingScore] = useState<number | null>(null);
     const [choices, setChoices] = useState<ChoiceForm[]>([emptyChoice(), emptyChoice()]);
     const [errors, setErrors] = useState<FormErrors>({});
     const [error, setError] = useState<string | null>(null);
@@ -109,6 +122,12 @@ export default function EditQuestionPage() {
             setQuesText(q.ques_text);
             setQuesExplanation(q.ques_explanation ?? "");
             setQuesTopicId(q.ques_topic_id ?? "");
+            setQuesScore(formatScore(q.ques_score) || "1");
+            setRemainingScore(
+                q.scoring?.total_score != null
+                    ? Math.round((Number(q.scoring.total_score) - Number(q.scoring.used_score_excluding_this)) * 100) / 100
+                    : null
+            );
             setImageUrl(q.ques_image_url ? `${SERVER_BASE}${q.ques_image_url}` : undefined);
             setChoices(
                 q.choices.length > 0
@@ -154,7 +173,7 @@ export default function EditQuestionPage() {
         e.preventDefault();
         setError(null);
 
-        const fieldErrors = validate(quesText, choices);
+        const fieldErrors = validate(quesText, choices, quesScore, remainingScore ?? undefined);
         if (Object.keys(fieldErrors).length > 0) { setErrors(fieldErrors); return; }
 
         startTransition(async () => {
@@ -165,6 +184,7 @@ export default function EditQuestionPage() {
                     ques_text: quesText,
                     ques_explanation: quesExplanation || null,
                     ques_topic_id: quesTopicId || null,
+                    ques_score: remainingScore !== null ? Number(quesScore) : undefined,
                     choices: choices.map((c) => ({
                         cho_id: c.cho_id,
                         cho_text: c.text,
@@ -290,6 +310,28 @@ export default function EditQuestionPage() {
                         disabled={isPending}
                     />
                 </div>
+
+                {remainingScore !== null && (
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">คะแนนของข้อนี้</label>
+                        <input
+                            type="number" min={0} max={MAX_QUESTION_SCORE} step="0.01"
+                            value={quesScore}
+                            onChange={(e) => {
+                                setQuesScore(e.target.value);
+                                if (errors.ques_score) setErrors((prev) => ({ ...prev, ques_score: undefined }));
+                            }}
+                            className={`w-32 px-4 py-2 border rounded focus:outline-none focus:ring-2 ${
+                                errors.ques_score
+                                    ? "border-red-400 focus:border-red-400 focus:ring-red-500/20"
+                                    : "border-gray-300 focus:border-blue-400 focus:ring-blue-500/20"
+                            }`}
+                        />
+                        {errors.ques_score
+                            ? <p className="text-xs text-red-500 mt-1">{errors.ques_score}</p>
+                            : <p className="text-xs text-gray-400 mt-1">ข้อนี้ใส่ได้สูงสุด {formatScore(remainingScore)} คะแนน (คะแนนที่ข้ออื่นยังไม่ได้ใช้)</p>}
+                    </div>
+                )}
 
                 <div>
                     <div className="flex items-center justify-between mb-2">

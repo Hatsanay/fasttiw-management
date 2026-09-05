@@ -14,6 +14,7 @@ import SearchInput from "@/components/ui/SearchInput";
 import { usePermission, BITS } from "@/app/components/permission-provider";
 import { useLatestRequest } from "@/app/lib/useLatestRequest";
 import { clampPage } from "@/app/lib/clampPage";
+import { formatScore } from "@/app/lib/scoring";
 import { toast } from "sonner";
 
 const SERVER_BASE = new URL(api).origin;
@@ -33,11 +34,16 @@ type Question = {
     ques_explanation: string | null;
     ques_image_url: string | null;
     ques_order: number;
+    ques_score: string | number;
     ques_topic_name: string | null;
     choices: Choice[];
 };
 
 type Product = { prod_id: string; prod_name: string };
+
+// total_score เป็น null = ชุดนี้ไม่ใช้ระบบคะแนน (หน้านี้จะไม่โชว์อะไรเกี่ยวกับคะแนนเลย)
+type Scoring = { total_score: string | number | null; used_score: string | number };
+const EMPTY_SCORING: Scoring = { total_score: null, used_score: 0 };
 
 async function fetchProductById(id: string): Promise<Product | null> {
     const res = await fetch(`${api}/products/${id}`, { headers: authHeader() });
@@ -47,10 +53,10 @@ async function fetchProductById(id: string): Promise<Product | null> {
 
 async function fetchQuestions(
     productId: string, limit: number, offset: number, search: string
-): Promise<{ data: Question[]; total: number }> {
+): Promise<{ data: Question[]; total: number; scoring: Scoring }> {
     const query = new URLSearchParams({ limit: String(limit), offset: String(offset), search });
     const res = await fetch(`${api}/products/${productId}/questions?${query}`, { headers: authHeader() });
-    if (!res.ok) return { data: [], total: 0 };
+    if (!res.ok) return { data: [], total: 0, scoring: EMPTY_SCORING };
     return res.json();
 }
 
@@ -65,6 +71,7 @@ export default function ProductQuestionsPage() {
     const [product, setProduct] = useState<Product | null>(null);
     const [questions, setQuestions] = useState<Question[]>([]);
     const [total, setTotal] = useState(0);
+    const [scoring, setScoring] = useState<Scoring>(EMPTY_SCORING);
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
     const [search, setSearch] = useState("");
@@ -96,6 +103,7 @@ export default function ProductQuestionsPage() {
             setProduct(productData);
             setQuestions(questionsResult.data);
             setTotal(questionsResult.total);
+            setScoring(questionsResult.scoring ?? EMPTY_SCORING);
             setSelectedIds(new Set());
 
             const correctPage = clampPage(questionsResult.total, pageSize, page);
@@ -206,6 +214,25 @@ export default function ProductQuestionsPage() {
                 <div>
                     <h1 className="text-xl sm:text-2xl font-bold text-gray-800">คำถามในชุดข้อสอบ</h1>
                     <p className="text-sm text-gray-500">{product?.prod_name ?? "..."} — {total} ข้อ</p>
+                    {scoring.total_score !== null && (() => {
+                        // ตัวนับโควตาคะแนน: ใช้ไปแล้วเท่าไร เหลือเท่าไร — คำนวณจากผลรวมของข้อ active ทั้งชุด
+                        // (มาจาก backend) ไม่ใช่แค่ข้อที่โชว์อยู่ในหน้านี้
+                        const totalScoreNum = Number(scoring.total_score);
+                        const usedNum = Number(scoring.used_score);
+                        const remaining = Math.round((totalScoreNum - usedNum) * 100) / 100;
+                        return (
+                            <p className="text-sm mt-1">
+                                <span className="text-gray-500">คะแนนเต็ม </span>
+                                <span className="font-medium text-gray-700">{formatScore(totalScoreNum)}</span>
+                                <span className="text-gray-500"> · ใช้ไปแล้ว </span>
+                                <span className="font-medium text-gray-700">{formatScore(usedNum)}</span>
+                                <span className="text-gray-500"> · เหลือ </span>
+                                <span className={`font-medium ${remaining > 0 ? "text-amber-600" : "text-green-600"}`}>
+                                    {formatScore(remaining)}
+                                </span>
+                            </p>
+                        );
+                    })()}
                 </div>
                 <div className="flex items-center gap-2">
                     {hasBit(BITS.createProduct) && total > 0 && (
@@ -303,6 +330,11 @@ export default function ProductQuestionsPage() {
                                         </span>
                                     </p>
                                     <div className="flex items-center gap-2 shrink-0">
+                                        {scoring.total_score !== null && (
+                                            <span className="px-2 py-0.5 text-xs rounded-full bg-amber-50 text-amber-700 font-medium">
+                                                {formatScore(q.ques_score)} คะแนน
+                                            </span>
+                                        )}
                                         {q.ques_topic_name && (
                                             <span className="px-2 py-0.5 text-xs rounded-full bg-blue-50 text-blue-600">
                                                 {q.ques_topic_name}

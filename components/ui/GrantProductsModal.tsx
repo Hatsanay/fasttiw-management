@@ -88,7 +88,13 @@ async function loadCouponOptions(search: string) {
 // (ห้ามแตกเป็น product_ids ฝั่งนี้แล้วส่งไปเอง ไม่งั้นยอดขายที่บันทึกจะเป็นราคาเต็มไม่ใช่ราคาแพ็กเกจ)
 async function grantEntitlements(
     customerId: string,
-    body: { product_ids?: string[]; package_id?: string; duration_months: number | null; coupon_code: string | null }
+    body: {
+        product_ids?: string[];
+        package_id?: string;
+        duration_months: number | null;
+        coupon_code: string | null;
+        charge: boolean;
+    }
 ) {
     const res = await fetch(`${api}/customers/${customerId}/entitlements`, {
         method: "POST",
@@ -115,6 +121,8 @@ export default function GrantProductsModal({ open, customerId, onClose, onDone }
     // เลือกได้ทีละโหมด: ให้สิทธิ์รายชุด หรือให้ทั้งแพ็กเกจ — แพ็กเกจเลือกได้ทีละอันเดียว เพราะราคาแพ็กเกจ
     // เป็นราคาเหมาของทั้งก้อน เลือกสองแพ็กเกจพร้อมกันแล้วไม่มีคำตอบเดียวว่าส่วนลดรวมควรเป็นเท่าไร
     const [mode, setMode] = useState<"product" | "package">("product");
+    // คิดเงินหรือไม่ — ค่าเริ่มต้นคือคิดเงิน (การให้สิทธิ์ส่วนใหญ่คือการขายจริง) ต้องตั้งใจติ๊กออกเองถึงจะแจกฟรี
+    const [charge, setCharge] = useState(true);
     const [packages, setPackages] = useState<Package[]>([]);
     const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
 
@@ -141,7 +149,7 @@ export default function GrantProductsModal({ open, customerId, onClose, onDone }
             // eslint-disable-next-line react-hooks/set-state-in-effect -- ต้อง reset ให้เสร็จก่อน fetch async เริ่ม กันข้อมูลของลูกค้าคนก่อนค้างโชว์
             setSelected(new Map()); setSearch(""); setPage(1); setDuration("12"); setDurationTouched(false);
             setCouponValue(""); setCoupon(null); setCouponError(null);
-            setMode("product"); setSelectedPackage(null);
+            setMode("product"); setSelectedPackage(null); setCharge(true);
         }
     }, [open, customerId]);
 
@@ -233,11 +241,12 @@ export default function GrantProductsModal({ open, customerId, onClose, onDone }
         try {
             const durationMonths = duration ? Number(duration) : null;
             const result = mode === "package"
-                ? await grantEntitlements(customerId, { package_id: selectedPackage!.pkg_id, duration_months: durationMonths, coupon_code: null })
+                ? await grantEntitlements(customerId, { package_id: selectedPackage!.pkg_id, duration_months: durationMonths, coupon_code: null, charge })
                 : await grantEntitlements(customerId, {
                     product_ids: [...selected.keys()],
                     duration_months: durationMonths,
-                    coupon_code: coupon?.cpn_code ?? null,
+                    coupon_code: charge ? (coupon?.cpn_code ?? null) : null,
+                    charge,
                 });
             toast.success(result.message ?? "ให้สิทธิ์สำเร็จ");
             onDone?.();
@@ -439,7 +448,7 @@ export default function GrantProductsModal({ open, customerId, onClose, onDone }
                     <div className="px-6 py-4 border-t border-gray-100 space-y-3 shrink-0 sticky bottom-0 bg-white">
                         {/* โค้ดส่วนลด — ซ่อนในโหมดแพ็กเกจ เพราะส่วนลดมาจากราคาแพ็กเกจอยู่แล้ว
                             ใช้ซ้อนกันไม่ได้ (backend ปฏิเสธ) จะเป็นการลดสองชั้นโดยไม่ตั้งใจ */}
-                        {isPackageMode ? null : coupon ? (
+                        {isPackageMode || !charge ? null : coupon ? (
                             <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-green-50 border border-green-100">
                                 <span className="inline-flex items-center gap-1.5 text-sm text-green-700 font-medium">
                                     <Tag className="w-3.5 h-3.5" /> {coupon.cpn_code}
@@ -467,7 +476,29 @@ export default function GrantProductsModal({ open, customerId, onClose, onDone }
                         )}
 
                         {/* สรุปราคา */}
-                        {canSubmit && (
+                        {/* คิดเงินหรือแจกฟรี — วางเหนือสรุปราคาเพราะเป็นตัวกำหนดว่าจะมีสรุปราคาให้ดูไหม */}
+                        <label className="flex items-start gap-2 cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={!charge}
+                                onChange={(e) => setCharge(!e.target.checked)}
+                                className="w-4 h-4 mt-0.5 accent-blue-500 shrink-0"
+                            />
+                            <span className="min-w-0">
+                                <span className="block text-sm text-gray-700">ไม่คิดเงิน (แจกฟรี)</span>
+                                <span className="block text-xs text-gray-400">
+                                    ไม่บันทึกยอดขายและค่าคอมเลย — ใช้กับเคสให้ทดลอง/ชดเชยลูกค้า/บัญชีทดสอบ
+                                </span>
+                            </span>
+                        </label>
+
+                        {canSubmit && !charge && (
+                            <p className="text-sm text-gray-500 border-t border-gray-100 pt-3">
+                                ให้สิทธิ์ {selectedCount} ชุด · <span className="font-medium text-gray-700">ไม่คิดเงิน</span>
+                            </p>
+                        )}
+
+                        {canSubmit && charge && (
                             <div className="text-sm space-y-0.5">
                                 <div className="flex items-center justify-between text-gray-500">
                                     <span>{isPackageMode ? `ราคารวมถ้าซื้อแยก ${selectedCount} ชุด` : `ยอดรวม ${selectedCount} ชุด`}</span>
@@ -534,7 +565,9 @@ export default function GrantProductsModal({ open, customerId, onClose, onDone }
                                 className="inline-flex items-center gap-1.5 px-5 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg shadow-sm transition-colors"
                             >
                                 <Check className="w-4 h-4" />
-                                {submitting ? "กำลังบันทึก..." : `ให้สิทธิ์${canSubmit ? ` (${selectedCount})` : ""}`}
+                                {submitting
+                                    ? "กำลังบันทึก..."
+                                    : `${charge ? "ให้สิทธิ์" : "แจกฟรี"}${canSubmit ? ` (${selectedCount})` : ""}`}
                             </button>
                         </div>
                     </div>

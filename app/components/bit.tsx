@@ -148,6 +148,20 @@ export const MENU_DEFS: MenuItem[] = [
     },
     // กลุ่มใหม่ต้องต่อท้ายเสมอ (ห้ามแทรกกลาง) เพราะตำแหน่ง bit ผูกกับ role_permission ที่บันทึกไว้ใน DB แล้ว
     { key: "chatManagement", label: "แชทกับลูกค้า", href: "/chat" },
+    // กลุ่มใหม่ต้องต่อท้ายเสมอ (ห้ามแทรกกลาง) เพราะตำแหน่ง bit ผูกกับ role_permission ที่บันทึกไว้ใน DB แล้ว
+    //
+    // ทุกตัวตั้ง hidden ไว้หมดเพราะหน้า /entitlements ไม่ได้อยู่บน sidebar (เข้าจากปุ่มในหน้าจัดการลูกค้า)
+    // กลุ่มนี้จึงมีไว้เป็น "สิทธิ์" อย่างเดียว ไม่ได้เป็นเมนู — แต่ยังโผล่ให้ติ๊กในหน้าจัดการบทบาทตามปกติ
+    {
+        key: "entitlementsManagement", label: "สิทธิ์ของลูกค้า", href: "/entitlements", hidden: true,
+        children: [
+            { key: "entitlementsManagement", label: "ดูสิทธิ์ทั้งหมด",        href: "/entitlements", hidden: true },
+            { key: "grantEntitlement",       label: "เพิ่มสิทธิ์ให้ลูกค้า",      href: "/entitlements/grant", hidden: true },
+            { key: "revokeEntitlement",      label: "ยกเลิกสิทธิ์",           href: "/entitlements/revoke", hidden: true },
+            { key: "refundEntitlement",      label: "ยกเลิกแบบหักยอดขาย/คืนเงิน", href: "/entitlements/refund", hidden: true },
+            { key: "editEntitlement",        label: "คืนสิทธิ์ / แก้วันหมดอายุ",  href: "/entitlements/edit", hidden: true },
+        ],
+    },
 ];
 
 // ─── Permission groups (used by create/edit role page) ────────────────────────
@@ -305,6 +319,18 @@ export const PERMISSION_GROUPS: PermGroup[] = [
         groupLabel: "แชทกับลูกค้า",
         bits: [
             { key: "chatManagement", label: "แชทกับลูกค้า", href: "/chat" },
+        ],
+    },
+    {
+        groupLabel: "สิทธิ์ของลูกค้า",
+        bits: [
+            { key: "entitlementsManagement", label: "ดูสิทธิ์ทั้งหมด",        href: "/entitlements" },
+            { key: "grantEntitlement",       label: "เพิ่มสิทธิ์ให้ลูกค้า",      href: "/entitlements/grant" },
+            { key: "revokeEntitlement",      label: "ยกเลิกสิทธิ์",           href: "/entitlements/revoke" },
+            // แยกจาก revokeEntitlement โดยตั้งใจ — ตัวนี้แตะเงินจริง (หักยอดขาย/สั่งคืนเงินผ่าน Stripe)
+            // จึงควรให้เฉพาะคนที่ดูแลเรื่องเงิน ไม่ใช่ทุกคนที่ยกเลิกสิทธิ์ได้
+            { key: "refundEntitlement",      label: "ยกเลิกแบบหักยอดขาย/คืนเงิน", href: "/entitlements/refund" },
+            { key: "editEntitlement",        label: "คืนสิทธิ์ / แก้วันหมดอายุ",  href: "/entitlements/edit" },
         ],
     },
 ];

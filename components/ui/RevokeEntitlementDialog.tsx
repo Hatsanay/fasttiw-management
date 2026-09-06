@@ -96,7 +96,7 @@ export default function RevokeEntitlementDialog({
                 <div className="overflow-y-auto flex-1 px-6 pb-2 space-y-2">
                     {!linkedToSale && (
                         <p className="text-xs text-gray-500 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2">
-                            สิทธิ์นี้ให้ไว้ก่อนระบบเริ่มผูกกับรายการขาย จึงหักยอดออกอัตโนมัติไม่ได้ — ทำได้แค่ยกเลิกเฉยๆ
+                            สิทธิ์นี้ไม่มีรายการขายผูกอยู่ (แจกฟรี หรือให้ไว้ก่อนระบบเริ่มบันทึกการขาย) จึงไม่มียอดอะไรให้หักออก — ทำได้แค่ยกเลิกเฉยๆ
                         </p>
                     )}
 

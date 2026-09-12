@@ -186,6 +186,15 @@ export default function ChatInbox() {
         setConversations(data.conversations ?? []);
     }, []);
 
+    // เปิดจากลิงก์ในแจ้งเตือน Telegram (/chat?conv=CCV...) — เลือกห้องนั้นให้ทันที ไม่ต้องไล่หาในรายการ
+    // อ่านจาก window.location ครั้งเดียวตอนเปิดหน้า (ไม่ใช้ useSearchParams ที่บังคับต้องครอบ Suspense)
+    useEffect(() => {
+        const conv = new URLSearchParams(window.location.search).get("conv");
+        if (!conv) return;
+        const pick = setTimeout(() => setSelectedId(conv), 0); // เลี่ยง set-state-in-effect เหมือนเอฟเฟกต์ด้านล่าง
+        return () => clearTimeout(pick);
+    }, []);
+
     useEffect(() => {
         // setTimeout(...,0) แทนการเรียกตรงๆ — เลี่ยง react-hooks/set-state-in-effect (ห้าม setState
         // แบบ synchronous ในตัว effect เอง) ตัวดึงข้อมูลจริงยังทำงานทันทีอยู่ดี แค่เลื่อนไปรันข้าม tick เดียว

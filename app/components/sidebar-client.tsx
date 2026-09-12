@@ -22,6 +22,7 @@ import {
     Banknote,
     Handshake,
     MessageCircle,
+    Eye,
     ChevronLeft,
     ChevronRight,
     ChevronDown,
@@ -43,6 +44,7 @@ const ICONS: Record<string, LucideIcon> = {
     "/payroll":     Banknote,
     "/partners":    Handshake,
     "/chat":        MessageCircle,
+    "/visitors":    Eye,
 };
 
 const CHAT_UNREAD_POLL_MS = 5000;

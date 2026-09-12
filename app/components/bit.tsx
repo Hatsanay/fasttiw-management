@@ -162,6 +162,8 @@ export const MENU_DEFS: MenuItem[] = [
             { key: "editEntitlement",        label: "คืนสิทธิ์ / แก้วันหมดอายุ",  href: "/entitlements/edit", hidden: true },
         ],
     },
+    // สถิติผู้เยี่ยมชม (2026-09-12) — ต่อท้ายตามกฎ ส่วนตำแหน่งบนเมนูจัดที่ MENU_DISPLAY_ORDER (อยู่ใต้ Dashboard)
+    { key: "visitorStats", label: "สถิติผู้เยี่ยมชม", href: "/visitors" },
 ];
 
 // ─── Permission groups (used by create/edit role page) ────────────────────────
@@ -333,6 +335,12 @@ export const PERMISSION_GROUPS: PermGroup[] = [
             { key: "editEntitlement",        label: "คืนสิทธิ์ / แก้วันหมดอายุ",  href: "/entitlements/edit" },
         ],
     },
+    {
+        groupLabel: "สถิติผู้เยี่ยมชม",
+        bits: [
+            { key: "visitorStats", label: "สถิติผู้เยี่ยมชม", href: "/visitors" },
+        ],
+    },
 ];
 
 // Start index (in flat bitmask) for each group
@@ -357,7 +365,7 @@ export function getLeaves(items: MenuItem[]): MenuItem[] {
 // ผูกกับตำแหน่งบิตของ role_permission ที่บันทึกไว้ใน DB แล้ว (ห้ามสลับ/แทรกกลาง มีแต่ต่อท้ายได้)
 // แต่ลำดับที่โชว์บน sidebar ปรับได้อิสระโดยไม่กระทบสิทธิ์เดิมเลย เพราะแค่จัดเรียง key ที่แสดงผล
 // ตั้งค่าระบบอยู่ล่างสุดเสมอตามที่ต้องการ — เพิ่มเมนูใหม่ในอนาคตให้ใส่ key ไว้ก่อน "settings" เสมอ
-export const MENU_DISPLAY_ORDER = ["dashboard", "usersManagement", "customersManagement", "products", "packagesManagement", "categories", "couponsManagement", "newsManagement", "chatManagement", "expensesManagement", "payrollManagement", "partnersManagement", "partnerDistributionsManagement", "reportsManagement", "paymentSettings", "settings"];
+export const MENU_DISPLAY_ORDER = ["dashboard", "visitorStats", "usersManagement", "customersManagement", "products", "packagesManagement", "categories", "couponsManagement", "newsManagement", "chatManagement", "expensesManagement", "payrollManagement", "partnersManagement", "partnerDistributionsManagement", "reportsManagement", "paymentSettings", "settings"];
 
 export function getVisibleItems(items: MenuItem[], bitmask: string): MenuItem[] {
     const leaves = getLeaves(items);

@@ -35,6 +35,14 @@ export function validateQuestionScoreInput(value: string, remaining?: number): s
     return undefined;
 }
 
+/** ตรวจเกณฑ์ผ่าน (%) — ว่าง = ไม่ตั้งเกณฑ์ (ผ่าน) · ตรงกับ validatePassPercent ใน product.controller.js */
+export function validatePassPercentInput(value: string): string | undefined {
+    if (!value.trim()) return undefined;
+    const num = Number(value);
+    if (!Number.isInteger(num) || num < 1 || num > 100) return "เกณฑ์ผ่านต้องเป็นจำนวนเต็ม 1-100 (%) หรือเว้นว่างถ้าไม่ตั้งเกณฑ์";
+    return undefined;
+}
+
 /** ตัดศูนย์ท้ายทศนิยมทิ้งเพื่อให้อ่านง่าย: 2.00 -> "2", 2.50 -> "2.5" */
 export function formatScore(value: number | string | null | undefined): string {
     if (value === null || value === undefined || value === "") return "";

@@ -9,7 +9,8 @@ import Button from "@/components/ui/Button/Button";
 import Input from "@/components/ui/Input/input";
 import SearchableSelect from "@/components/ui/SearchableSelect";
 import DragDropImage from "@/components/ui/DragDropImage";
-import { validateTotalScoreInput, MAX_TOTAL_SCORE, formatScore } from "@/app/lib/scoring";
+import { validateTotalScoreInput, validatePassPercentInput, MAX_TOTAL_SCORE, formatScore } from "@/app/lib/scoring";
+import PassPercentField from "../PassPercentField";
 
 type Product = {
     prod_id: string;
@@ -27,6 +28,7 @@ type Product = {
     prod_exam_duration_minutes: number;
     prod_entitlement_duration_months: number | null;
     prod_total_score: string | number | null;
+    prod_pass_percent: number | null;
     used_score: string | number;
 };
 
@@ -59,15 +61,18 @@ const SERVER_BASE = new URL(api).origin;
 
 type FormErrors = {
     prod_name?: string; prod_price?: string; prod_compare_price?: string; exam_duration?: string; commission_value?: string; entitlement_duration?: string; total_score?: string;
+    pass_percent?: string;
 };
 
 function validate(
     prodName: string, prodPrice: string, prodComparePrice: string, isFree: boolean, examDuration: string,
     commissionStaffId: string, commissionType: "percent" | "fixed", commissionValue: string,
     entitlementLifetime: boolean, entitlementDuration: string,
-    useScoring: boolean, totalScore: string, usedScore: number
+    useScoring: boolean, totalScore: string, usedScore: number, passPercent: string
 ): FormErrors {
     const errors: FormErrors = {};
+    const passError = validatePassPercentInput(passPercent);
+    if (passError) errors.pass_percent = passError;
 
     if (!prodName.trim())              errors.prod_name = "กรุณากรอกชื่อชุดข้อสอบ";
     else if (prodName.trim().length < 2) errors.prod_name = "ชื่อต้องมีอย่างน้อย 2 ตัวอักษร";
@@ -139,6 +144,7 @@ export default function EditProductPage() {
     const [totalScore, setTotalScore] = useState("100");
     // ผลรวมคะแนนของข้อที่ active อยู่ตอนนี้ (มาจาก backend) ใช้เตือนตอนแอดมินจะลดคะแนนเต็มลง
     const [usedScore, setUsedScore] = useState(0);
+    const [passPercent, setPassPercent] = useState(""); // ว่าง = ไม่ตั้งเกณฑ์ผ่าน
     const [prodStatus, setProdStatus] = useState<Product["prod_status"]>("draft");
     const [prodCategoryId, setProdCategoryId] = useState("");
     const [commissionStaffId, setCommissionStaffId] = useState("");
@@ -221,6 +227,7 @@ export default function EditProductPage() {
             setUseScoring(data.prod_total_score != null);
             setTotalScore(data.prod_total_score != null ? formatScore(data.prod_total_score) : "100");
             setUsedScore(Number(data.used_score) || 0);
+            setPassPercent(data.prod_pass_percent != null ? String(data.prod_pass_percent) : "");
             setProdStatus(data.prod_status);
             setProdCategoryId(data.prod_category_id ?? "");
             setCommissionStaffId(data.prod_commission_staff_id ?? "");
@@ -237,7 +244,7 @@ export default function EditProductPage() {
         const fieldErrors = validate(
             prodName, prodPrice, prodComparePrice, isFree, examDuration, commissionStaffId, commissionType, commissionValue,
             entitlementLifetime, entitlementDuration,
-            useScoring, totalScore, usedScore
+            useScoring, totalScore, usedScore, passPercent
         );
         if (Object.keys(fieldErrors).length > 0) { setErrors(fieldErrors); return; }
 
@@ -254,6 +261,7 @@ export default function EditProductPage() {
                     prod_exam_duration_minutes: Number(examDuration) || 60,
                     prod_entitlement_duration_months: entitlementLifetime ? null : Number(entitlementDuration),
                     prod_total_score: useScoring ? Number(totalScore) : null,
+                    prod_pass_percent: passPercent.trim() ? Number(passPercent) : null,
                     prod_status: prodStatus,
                     prod_category_id: prodCategoryId || null,
                     prod_commission_staff_id: commissionStaffId || null,
@@ -394,6 +402,15 @@ export default function EditProductPage() {
                         การเปลี่ยนค่านี้ไม่กระทบผลสอบที่ลูกค้าทำไปแล้ว เพราะระบบบันทึกคะแนนเต็มไว้ตั้งแต่ตอนเริ่มทำข้อสอบ
                     </p>
                 </div>
+
+                <PassPercentField
+                    value={passPercent}
+                    onChange={(v) => {
+                        setPassPercent(v);
+                        if (errors.pass_percent) setErrors((prev) => ({ ...prev, pass_percent: undefined }));
+                    }}
+                    error={errors.pass_percent}
+                />
 
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">ระยะเวลาสิทธิ์หลังลูกค้าซื้อเอง</label>

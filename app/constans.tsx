@@ -1,5 +1,11 @@
-const api = "http://localhost:3003/api/V1";
-// const api = "https://fasttiwbackend.fasttiw.com/api/V1"; // production (ย้ายจาก dktimeh.com แล้ว)
+// เลือก backend ตามโหมดเอง — ไม่ต้องสลับบรรทัดก่อน deploy อีก (เดิมต้องแก้มือ แล้ว deploy 2026-09-15 21:13 หลุด
+// localhost ขึ้น production ไป แอดมิน login ไม่ได้ทั้งระบบ: Server Action บนเซิร์ฟเวอร์ต่อ localhost:3003 ไม่ติด)
+// next build (production) = โดเมนจริง / next dev = เครื่องตัวเอง · ตั้ง NEXT_PUBLIC_API_URL ทับได้ถ้าจำเป็น
+// NODE_ENV และ NEXT_PUBLIC_* ถูกฝังตอน build ทั้งฝั่ง server และ client เหมือนกัน
+const api = process.env.NEXT_PUBLIC_API_URL
+    ?? (process.env.NODE_ENV === "production"
+        ? "https://fasttiwbackend.fasttiw.com/api/V1" // production (ย้ายจาก dktimeh.com แล้ว)
+        : "http://localhost:3003/api/V1");
 
 
 const theme = {

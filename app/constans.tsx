@@ -1,5 +1,5 @@
-// const api = "http://localhost:3003/api/V1";
-const api = "https://fasttiwbackend.fasttiw.com/api/V1"; // production (ย้ายจาก dktimeh.com แล้ว)
+const api = "http://localhost:3003/api/V1";
+// const api = "https://fasttiwbackend.fasttiw.com/api/V1"; // production (ย้ายจาก dktimeh.com แล้ว)
 
 
 const theme = {

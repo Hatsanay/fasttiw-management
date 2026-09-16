@@ -11,6 +11,7 @@ import SearchableSelect from "@/components/ui/SearchableSelect";
 import DragDropImage from "@/components/ui/DragDropImage";
 import { validateTotalScoreInput, validatePassPercentInput, MAX_TOTAL_SCORE, formatScore } from "@/app/lib/scoring";
 import PassPercentField from "../PassPercentField";
+import TopicPassPercentFields, { type TopicPassTopic } from "../TopicPassPercentFields";
 
 type Product = {
     prod_id: string;
@@ -30,6 +31,7 @@ type Product = {
     prod_total_score: string | number | null;
     prod_pass_percent: number | null;
     used_score: string | number;
+    topic_pass_percents: (TopicPassTopic & { pass_percent: number | null })[];
 };
 
 async function fetchProductById(id: string): Promise<Product | null> {
@@ -61,18 +63,21 @@ const SERVER_BASE = new URL(api).origin;
 
 type FormErrors = {
     prod_name?: string; prod_price?: string; prod_compare_price?: string; exam_duration?: string; commission_value?: string; entitlement_duration?: string; total_score?: string;
-    pass_percent?: string;
+    pass_percent?: string; topic_pass?: string;
 };
 
 function validate(
     prodName: string, prodPrice: string, prodComparePrice: string, isFree: boolean, examDuration: string,
     commissionStaffId: string, commissionType: "percent" | "fixed", commissionValue: string,
     entitlementLifetime: boolean, entitlementDuration: string,
-    useScoring: boolean, totalScore: string, usedScore: number, passPercent: string
+    useScoring: boolean, totalScore: string, usedScore: number, passPercent: string,
+    topics: TopicPassTopic[], topicPass: Record<string, string>
 ): FormErrors {
     const errors: FormErrors = {};
     const passError = validatePassPercentInput(passPercent);
     if (passError) errors.pass_percent = passError;
+    const badTopic = topics.find((t) => validatePassPercentInput(topicPass[t.tpc_id] ?? ""));
+    if (badTopic) errors.topic_pass = `เกณฑ์วิชา "${badTopic.tpc_name}" ต้องเป็นจำนวนเต็ม 1-100 (%) หรือเว้นว่าง`;
 
     if (!prodName.trim())              errors.prod_name = "กรุณากรอกชื่อชุดข้อสอบ";
     else if (prodName.trim().length < 2) errors.prod_name = "ชื่อต้องมีอย่างน้อย 2 ตัวอักษร";
@@ -145,6 +150,11 @@ export default function EditProductPage() {
     // ผลรวมคะแนนของข้อที่ active อยู่ตอนนี้ (มาจาก backend) ใช้เตือนตอนแอดมินจะลดคะแนนเต็มลง
     const [usedScore, setUsedScore] = useState(0);
     const [passPercent, setPassPercent] = useState(""); // ว่าง = ไม่ตั้งเกณฑ์ผ่าน
+    // เกณฑ์รายวิชา: รายชื่อวิชามาจาก backend · ค่าเก็บเป็น string ตาม tpc_id (ว่าง = ไม่ตั้ง)
+    // topicsLoaded กันส่ง topic_pass_percents ว่างไปลบเกณฑ์เดิมทิ้ง ถ้าโหลดข้อมูลไม่ทันแล้วกดบันทึก
+    const [topics, setTopics] = useState<TopicPassTopic[]>([]);
+    const [topicPass, setTopicPass] = useState<Record<string, string>>({});
+    const [topicsLoaded, setTopicsLoaded] = useState(false);
     const [prodStatus, setProdStatus] = useState<Product["prod_status"]>("draft");
     const [prodCategoryId, setProdCategoryId] = useState("");
     const [commissionStaffId, setCommissionStaffId] = useState("");
@@ -228,6 +238,13 @@ export default function EditProductPage() {
             setTotalScore(data.prod_total_score != null ? formatScore(data.prod_total_score) : "100");
             setUsedScore(Number(data.used_score) || 0);
             setPassPercent(data.prod_pass_percent != null ? String(data.prod_pass_percent) : "");
+            if (Array.isArray(data.topic_pass_percents)) {
+                setTopics(data.topic_pass_percents);
+                setTopicPass(Object.fromEntries(
+                    data.topic_pass_percents.map((t) => [t.tpc_id, t.pass_percent != null ? String(t.pass_percent) : ""])
+                ));
+                setTopicsLoaded(true);
+            }
             setProdStatus(data.prod_status);
             setProdCategoryId(data.prod_category_id ?? "");
             setCommissionStaffId(data.prod_commission_staff_id ?? "");
@@ -244,7 +261,7 @@ export default function EditProductPage() {
         const fieldErrors = validate(
             prodName, prodPrice, prodComparePrice, isFree, examDuration, commissionStaffId, commissionType, commissionValue,
             entitlementLifetime, entitlementDuration,
-            useScoring, totalScore, usedScore, passPercent
+            useScoring, totalScore, usedScore, passPercent, topics, topicPass
         );
         if (Object.keys(fieldErrors).length > 0) { setErrors(fieldErrors); return; }
 
@@ -262,6 +279,12 @@ export default function EditProductPage() {
                     prod_entitlement_duration_months: entitlementLifetime ? null : Number(entitlementDuration),
                     prod_total_score: useScoring ? Number(totalScore) : null,
                     prod_pass_percent: passPercent.trim() ? Number(passPercent) : null,
+                    ...(topicsLoaded && {
+                        topic_pass_percents: topics.map((t) => ({
+                            tpc_id: t.tpc_id,
+                            pass_percent: topicPass[t.tpc_id]?.trim() ? Number(topicPass[t.tpc_id]) : null,
+                        })),
+                    }),
                     prod_status: prodStatus,
                     prod_category_id: prodCategoryId || null,
                     prod_commission_staff_id: commissionStaffId || null,
@@ -411,6 +434,18 @@ export default function EditProductPage() {
                     }}
                     error={errors.pass_percent}
                 />
+
+                {topicsLoaded && (
+                    <TopicPassPercentFields
+                        topics={topics}
+                        values={topicPass}
+                        onChange={(tpcId, v) => {
+                            setTopicPass((prev) => ({ ...prev, [tpcId]: v }));
+                            if (errors.topic_pass) setErrors((prev) => ({ ...prev, topic_pass: undefined }));
+                        }}
+                        error={errors.topic_pass}
+                    />
+                )}
 
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">ระยะเวลาสิทธิ์หลังลูกค้าซื้อเอง</label>

@@ -22,6 +22,8 @@ import { toast } from "sonner";
 export type MockSection = {
     tpc_id: string;
     tpc_name: string;
+    // หัวข้อชื่อซ้ำกันได้ข้ามหมวด ("วิชาภาษาอังกฤษ" มีได้ทุกหมวด) — ต้องกำกับหมวดไว้เสมอ ไม่งั้นแยกไม่ออก
+    tpc_category_name?: string | null;
     question_count: string;
     criterion: Criterion;
     // จำนวนข้อที่มีจริงในคลัง (ทุกชุดที่เผยแพร่) — backend ส่งมาให้ตอนแก้ไข ใช้เตือนว่าโควตาเกินของที่มี
@@ -51,7 +53,7 @@ export function mockExamFromApi(data: {
     me_name: string; me_description: string | null; me_category_id: string | null;
     me_time_limit_minutes: number; me_status: MockExamFormValue["me_status"];
     me_pass_percent: number | null; me_pass_min: number | null;
-    sections: { tpc_id: string; tpc_name: string; question_count: number; pass_percent: number | null; pass_min: number | null; available: number }[];
+    sections: { tpc_id: string; tpc_name: string; tpc_category_name: string | null; question_count: number; pass_percent: number | null; pass_min: number | null; available: number }[];
 }): MockExamFormValue {
     return {
         me_name: data.me_name,
@@ -63,6 +65,7 @@ export function mockExamFromApi(data: {
         sections: data.sections.map((s) => ({
             tpc_id: s.tpc_id,
             tpc_name: s.tpc_name,
+            tpc_category_name: s.tpc_category_name,
             question_count: String(s.question_count),
             criterion: passCriterionFromApi(s.pass_percent, s.pass_min),
             available: s.available,
@@ -115,12 +118,15 @@ export default function MockExamForm({ examId, initial }: { examId?: string; ini
     async function addTopic(tpcId: string) {
         setNewTopicId("");
         if (!tpcId || value.sections.some((s) => s.tpc_id === tpcId)) return;
-        // ต้องรู้ชื่อวิชาไว้แสดงในตาราง — ดึงจากตัวเลือกที่โหลดมาแล้วอีกครั้ง (รายการสั้น ไม่หนัก)
-        const options = await loadTopicOptions(value.me_category_id, "");
-        const label = options.find((o) => o.value === tpcId)?.label ?? tpcId;
+        // ต้องรู้ชื่อวิชา + หมวดไว้แสดงในตาราง — ดึงจากตัวเลือกที่โหลดมาแล้วอีกครั้ง (รายการสั้น ไม่หนัก)
+        const options = await loadTopicOptions(value.me_category_id, "", { withCategory: true });
+        const option = options.find((o) => o.value === tpcId);
         setValue((prev) => ({
             ...prev,
-            sections: [...prev.sections, { tpc_id: tpcId, tpc_name: label, question_count: "25", criterion: EMPTY_PASS_CRITERION }],
+            sections: [...prev.sections, {
+                tpc_id: tpcId, tpc_name: option?.name ?? option?.label ?? tpcId, tpc_category_name: option?.category ?? null,
+                question_count: "25", criterion: EMPTY_PASS_CRITERION,
+            }],
         }));
         setErrors((prev) => ({ ...prev, sections: undefined }));
     }
@@ -211,7 +217,7 @@ export default function MockExamForm({ examId, initial }: { examId?: string; ini
                 <label className="block text-sm font-medium text-gray-700 mb-1">วิชาและจำนวนข้อ</label>
                 <p className="text-xs text-gray-400 mb-2">
                     ระบบจะสุ่มข้อของแต่ละวิชาจาก<b>ทุกชุดข้อสอบที่ลูกค้าคนนั้นมีสิทธิ์</b> ใหม่ทุกครั้งที่เริ่มสอบ —
-                    ลูกค้ามีชุดมาก ข้อยิ่งไม่ซ้ำ · เรียงตามลำดับที่เพิ่มไว้
+                    ลูกค้ามีชุดมาก ข้อยิ่งไม่ซ้ำ · เรียงตามลำดับที่เพิ่มไว้ · ชื่อวิชาซ้ำกันได้ข้ามหมวด จึงมีชื่อหมวดกำกับไว้ให้
                 </p>
 
                 {value.sections.length > 0 && (
@@ -222,7 +228,14 @@ export default function MockExamForm({ examId, initial }: { examId?: string; ini
                             return (
                                 <div key={s.tpc_id} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
                                     <div className="min-w-0 flex-1 basis-40">
-                                        <p className="text-sm text-gray-800">{s.tpc_name}</p>
+                                        <p className="text-sm text-gray-800">
+                                            {s.tpc_name}
+                                            {s.tpc_category_name && (
+                                                <span className="ml-1.5 rounded-full bg-gray-100 px-1.5 py-0.5 text-[11px] text-gray-500">
+                                                    {s.tpc_category_name}
+                                                </span>
+                                            )}
+                                        </p>
                                         {s.available !== undefined && (
                                             <p className={shortOfPool ? "text-xs text-amber-600" : "text-xs text-gray-400"}>
                                                 มีในคลังทั้งหมด {s.available} ข้อ{shortOfPool ? " — น้อยกว่าที่ตั้งไว้" : ""}
@@ -247,7 +260,7 @@ export default function MockExamForm({ examId, initial }: { examId?: string; ini
 
                 <SearchableSelect
                     key={value.sections.length}
-                    loadOptions={(search) => loadTopicOptions(value.me_category_id, search)}
+                    loadOptions={(search) => loadTopicOptions(value.me_category_id, search, { withCategory: true })}
                     value={newTopicId}
                     onChange={addTopic}
                     className="w-full sm:w-80"

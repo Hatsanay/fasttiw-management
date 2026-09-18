@@ -164,6 +164,8 @@ export const MENU_DEFS: MenuItem[] = [
     },
     // สถิติผู้เยี่ยมชม (2026-09-12) — ต่อท้ายตามกฎ ส่วนตำแหน่งบนเมนูจัดที่ MENU_DISPLAY_ORDER (อยู่ใต้ Dashboard)
     { key: "visitorStats", label: "สถิติผู้เยี่ยมชม", href: "/visitors" },
+    // สนามสอบเสมือนจริง (2026-09-18) — ต่อท้ายตามกฎ ตำแหน่งบนเมนูจัดที่ MENU_DISPLAY_ORDER (อยู่ใต้ชุดข้อสอบ)
+    { key: "mockExamsManagement", label: "สนามสอบเสมือน", href: "/mock-exams" },
 ];
 
 // ─── Permission groups (used by create/edit role page) ────────────────────────
@@ -341,6 +343,12 @@ export const PERMISSION_GROUPS: PermGroup[] = [
             { key: "visitorStats", label: "สถิติผู้เยี่ยมชม", href: "/visitors" },
         ],
     },
+    {
+        groupLabel: "สนามสอบเสมือน",
+        bits: [
+            { key: "mockExamsManagement", label: "จัดการสนามสอบเสมือน", href: "/mock-exams" },
+        ],
+    },
 ];
 
 // Start index (in flat bitmask) for each group
@@ -365,7 +373,7 @@ export function getLeaves(items: MenuItem[]): MenuItem[] {
 // ผูกกับตำแหน่งบิตของ role_permission ที่บันทึกไว้ใน DB แล้ว (ห้ามสลับ/แทรกกลาง มีแต่ต่อท้ายได้)
 // แต่ลำดับที่โชว์บน sidebar ปรับได้อิสระโดยไม่กระทบสิทธิ์เดิมเลย เพราะแค่จัดเรียง key ที่แสดงผล
 // ตั้งค่าระบบอยู่ล่างสุดเสมอตามที่ต้องการ — เพิ่มเมนูใหม่ในอนาคตให้ใส่ key ไว้ก่อน "settings" เสมอ
-export const MENU_DISPLAY_ORDER = ["dashboard", "visitorStats", "usersManagement", "customersManagement", "products", "packagesManagement", "categories", "couponsManagement", "newsManagement", "chatManagement", "expensesManagement", "payrollManagement", "partnersManagement", "partnerDistributionsManagement", "reportsManagement", "paymentSettings", "settings"];
+export const MENU_DISPLAY_ORDER = ["dashboard", "visitorStats", "usersManagement", "customersManagement", "products", "mockExamsManagement", "packagesManagement", "categories", "couponsManagement", "newsManagement", "chatManagement", "expensesManagement", "payrollManagement", "partnersManagement", "partnerDistributionsManagement", "reportsManagement", "paymentSettings", "settings"];
 
 export function getVisibleItems(items: MenuItem[], bitmask: string): MenuItem[] {
     const leaves = getLeaves(items);

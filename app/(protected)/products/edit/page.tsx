@@ -9,9 +9,12 @@ import Button from "@/components/ui/Button/Button";
 import Input from "@/components/ui/Input/input";
 import SearchableSelect from "@/components/ui/SearchableSelect";
 import DragDropImage from "@/components/ui/DragDropImage";
-import { validateTotalScoreInput, validatePassPercentInput, MAX_TOTAL_SCORE, formatScore } from "@/app/lib/scoring";
-import PassPercentField from "../PassPercentField";
-import TopicPassPercentFields, { type TopicPassTopic } from "../TopicPassPercentFields";
+import {
+    validateTotalScoreInput, validatePassCriterionInput, passCriterionPayload, passCriterionFromApi,
+    EMPTY_PASS_CRITERION, MAX_TOTAL_SCORE, formatScore, type PassCriterionInput,
+} from "@/app/lib/scoring";
+import PassCriterionField from "../PassCriterionField";
+import TopicPassCriteriaFields, { type TopicPassTopic } from "../TopicPassCriteriaFields";
 
 type Product = {
     prod_id: string;
@@ -30,8 +33,9 @@ type Product = {
     prod_entitlement_duration_months: number | null;
     prod_total_score: string | number | null;
     prod_pass_percent: number | null;
+    prod_pass_min: string | number | null;
     used_score: string | number;
-    topic_pass_percents: (TopicPassTopic & { pass_percent: number | null })[];
+    topic_pass_criteria: (TopicPassTopic & { pass_percent: number | null; pass_min: number | null })[];
 };
 
 async function fetchProductById(id: string): Promise<Product | null> {
@@ -63,21 +67,23 @@ const SERVER_BASE = new URL(api).origin;
 
 type FormErrors = {
     prod_name?: string; prod_price?: string; prod_compare_price?: string; exam_duration?: string; commission_value?: string; entitlement_duration?: string; total_score?: string;
-    pass_percent?: string; topic_pass?: string;
+    pass_criterion?: string; topic_pass?: string;
 };
 
 function validate(
     prodName: string, prodPrice: string, prodComparePrice: string, isFree: boolean, examDuration: string,
     commissionStaffId: string, commissionType: "percent" | "fixed", commissionValue: string,
     entitlementLifetime: boolean, entitlementDuration: string,
-    useScoring: boolean, totalScore: string, usedScore: number, passPercent: string,
-    topics: TopicPassTopic[], topicPass: Record<string, string>
+    useScoring: boolean, totalScore: string, usedScore: number, pass: PassCriterionInput,
+    topics: TopicPassTopic[], topicPass: Record<string, PassCriterionInput>
 ): FormErrors {
     const errors: FormErrors = {};
-    const passError = validatePassPercentInput(passPercent);
-    if (passError) errors.pass_percent = passError;
-    const badTopic = topics.find((t) => validatePassPercentInput(topicPass[t.tpc_id] ?? ""));
-    if (badTopic) errors.topic_pass = `เกณฑ์วิชา "${badTopic.tpc_name}" ต้องเป็นจำนวนเต็ม 1-100 (%) หรือเว้นว่าง`;
+    const passError = validatePassCriterionInput(pass, useScoring);
+    if (passError) errors.pass_criterion = passError;
+    for (const t of topics) {
+        const topicError = validatePassCriterionInput(topicPass[t.tpc_id] ?? EMPTY_PASS_CRITERION, useScoring);
+        if (topicError) { errors.topic_pass = `วิชา "${t.tpc_name}": ${topicError}`; break; }
+    }
 
     if (!prodName.trim())              errors.prod_name = "กรุณากรอกชื่อชุดข้อสอบ";
     else if (prodName.trim().length < 2) errors.prod_name = "ชื่อต้องมีอย่างน้อย 2 ตัวอักษร";
@@ -149,11 +155,11 @@ export default function EditProductPage() {
     const [totalScore, setTotalScore] = useState("100");
     // ผลรวมคะแนนของข้อที่ active อยู่ตอนนี้ (มาจาก backend) ใช้เตือนตอนแอดมินจะลดคะแนนเต็มลง
     const [usedScore, setUsedScore] = useState(0);
-    const [passPercent, setPassPercent] = useState(""); // ว่าง = ไม่ตั้งเกณฑ์ผ่าน
+    const [pass, setPass] = useState<PassCriterionInput>(EMPTY_PASS_CRITERION); // ว่าง = ไม่ตั้งเกณฑ์ผ่าน
     // เกณฑ์รายวิชา: รายชื่อวิชามาจาก backend · ค่าเก็บเป็น string ตาม tpc_id (ว่าง = ไม่ตั้ง)
-    // topicsLoaded กันส่ง topic_pass_percents ว่างไปลบเกณฑ์เดิมทิ้ง ถ้าโหลดข้อมูลไม่ทันแล้วกดบันทึก
+    // topicsLoaded กันส่ง topic_pass_criteria ว่างไปลบเกณฑ์เดิมทิ้ง ถ้าโหลดข้อมูลไม่ทันแล้วกดบันทึก
     const [topics, setTopics] = useState<TopicPassTopic[]>([]);
-    const [topicPass, setTopicPass] = useState<Record<string, string>>({});
+    const [topicPass, setTopicPass] = useState<Record<string, PassCriterionInput>>({});
     const [topicsLoaded, setTopicsLoaded] = useState(false);
     const [prodStatus, setProdStatus] = useState<Product["prod_status"]>("draft");
     const [prodCategoryId, setProdCategoryId] = useState("");
@@ -237,11 +243,11 @@ export default function EditProductPage() {
             setUseScoring(data.prod_total_score != null);
             setTotalScore(data.prod_total_score != null ? formatScore(data.prod_total_score) : "100");
             setUsedScore(Number(data.used_score) || 0);
-            setPassPercent(data.prod_pass_percent != null ? String(data.prod_pass_percent) : "");
-            if (Array.isArray(data.topic_pass_percents)) {
-                setTopics(data.topic_pass_percents);
+            setPass(passCriterionFromApi(data.prod_pass_percent, data.prod_pass_min));
+            if (Array.isArray(data.topic_pass_criteria)) {
+                setTopics(data.topic_pass_criteria);
                 setTopicPass(Object.fromEntries(
-                    data.topic_pass_percents.map((t) => [t.tpc_id, t.pass_percent != null ? String(t.pass_percent) : ""])
+                    data.topic_pass_criteria.map((t) => [t.tpc_id, passCriterionFromApi(t.pass_percent, t.pass_min)])
                 ));
                 setTopicsLoaded(true);
             }
@@ -261,7 +267,7 @@ export default function EditProductPage() {
         const fieldErrors = validate(
             prodName, prodPrice, prodComparePrice, isFree, examDuration, commissionStaffId, commissionType, commissionValue,
             entitlementLifetime, entitlementDuration,
-            useScoring, totalScore, usedScore, passPercent, topics, topicPass
+            useScoring, totalScore, usedScore, pass, topics, topicPass
         );
         if (Object.keys(fieldErrors).length > 0) { setErrors(fieldErrors); return; }
 
@@ -278,12 +284,13 @@ export default function EditProductPage() {
                     prod_exam_duration_minutes: Number(examDuration) || 60,
                     prod_entitlement_duration_months: entitlementLifetime ? null : Number(entitlementDuration),
                     prod_total_score: useScoring ? Number(totalScore) : null,
-                    prod_pass_percent: passPercent.trim() ? Number(passPercent) : null,
+                    prod_pass_percent: passCriterionPayload(pass).percent,
+                    prod_pass_min: passCriterionPayload(pass).min,
                     ...(topicsLoaded && {
-                        topic_pass_percents: topics.map((t) => ({
-                            tpc_id: t.tpc_id,
-                            pass_percent: topicPass[t.tpc_id]?.trim() ? Number(topicPass[t.tpc_id]) : null,
-                        })),
+                        topic_pass_criteria: topics.map((t) => {
+                            const { percent, min } = passCriterionPayload(topicPass[t.tpc_id] ?? EMPTY_PASS_CRITERION);
+                            return { tpc_id: t.tpc_id, pass_percent: percent, pass_min: min };
+                        }),
                     }),
                     prod_status: prodStatus,
                     prod_category_id: prodCategoryId || null,
@@ -426,21 +433,29 @@ export default function EditProductPage() {
                     </p>
                 </div>
 
-                <PassPercentField
-                    value={passPercent}
-                    onChange={(v) => {
-                        setPassPercent(v);
-                        if (errors.pass_percent) setErrors((prev) => ({ ...prev, pass_percent: undefined }));
+                <PassCriterionField
+                    criterion={pass}
+                    onChange={(next) => {
+                        setPass(next);
+                        if (errors.pass_criterion) setErrors((prev) => ({ ...prev, pass_criterion: undefined }));
                     }}
-                    error={errors.pass_percent}
+                    unitLabel={useScoring ? "คะแนน" : "ข้อ"}
+                    outOfHint={
+                        useScoring
+                            ? `คะแนนเต็มของชุดนี้ ${totalScore || "-"} คะแนน`
+                            : topicsLoaded ? `ชุดนี้มีคำถามตอนนี้ ${topics.reduce((sum, t) => sum + t.question_count, 0)} ข้อ` : undefined
+                    }
+                    error={errors.pass_criterion}
                 />
 
                 {topicsLoaded && (
-                    <TopicPassPercentFields
+                    <TopicPassCriteriaFields
                         topics={topics}
                         values={topicPass}
-                        onChange={(tpcId, v) => {
-                            setTopicPass((prev) => ({ ...prev, [tpcId]: v }));
+                        unitLabel={useScoring ? "คะแนน" : "ข้อ"}
+                        scored={useScoring}
+                        onChange={(tpcId, next) => {
+                            setTopicPass((prev) => ({ ...prev, [tpcId]: next }));
                             if (errors.topic_pass) setErrors((prev) => ({ ...prev, topic_pass: undefined }));
                         }}
                         error={errors.topic_pass}

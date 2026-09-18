@@ -9,8 +9,11 @@ import Button from "@/components/ui/Button/Button";
 import Input from "@/components/ui/Input/input";
 import SearchableSelect from "@/components/ui/SearchableSelect";
 import DragDropImage from "@/components/ui/DragDropImage";
-import { validateTotalScoreInput, validatePassPercentInput, MAX_TOTAL_SCORE } from "@/app/lib/scoring";
-import PassPercentField from "../PassPercentField";
+import {
+    validateTotalScoreInput, validatePassCriterionInput, passCriterionPayload, EMPTY_PASS_CRITERION, MAX_TOTAL_SCORE,
+    type PassCriterionInput,
+} from "@/app/lib/scoring";
+import PassCriterionField from "../PassCriterionField";
 
 async function uploadCover(productId: string, file: File) {
     const fd = new FormData();
@@ -33,18 +36,18 @@ async function loadStaffOptions(search: string) {
 
 type FormErrors = {
     prod_name?: string; prod_price?: string; prod_compare_price?: string; exam_duration?: string; commission_value?: string; entitlement_duration?: string; total_score?: string;
-    pass_percent?: string;
+    pass_criterion?: string;
 };
 
 function validate(
     prodName: string, prodPrice: string, prodComparePrice: string, isFree: boolean, examDuration: string,
     commissionStaffId: string, commissionType: "percent" | "fixed", commissionValue: string,
     entitlementLifetime: boolean, entitlementDuration: string,
-    useScoring: boolean, totalScore: string, passPercent: string
+    useScoring: boolean, totalScore: string, pass: PassCriterionInput
 ): FormErrors {
     const errors: FormErrors = {};
-    const passError = validatePassPercentInput(passPercent);
-    if (passError) errors.pass_percent = passError;
+    const passError = validatePassCriterionInput(pass, useScoring);
+    if (passError) errors.pass_criterion = passError;
 
     if (!prodName.trim())              errors.prod_name = "กรุณากรอกชื่อชุดข้อสอบ";
     else if (prodName.trim().length < 2) errors.prod_name = "ชื่อต้องมีอย่างน้อย 2 ตัวอักษร";
@@ -112,7 +115,7 @@ export default function CreateProductPage() {
     // ค่าเริ่มต้นไม่ใช้ระบบคะแนน = พฤติกรรมเดิมของระบบ (คิดผลเป็น % จากจำนวนข้อ) แอดมินต้องเลือกเปิดเอง
     const [useScoring, setUseScoring] = useState(false);
     const [totalScore, setTotalScore] = useState("100");
-    const [passPercent, setPassPercent] = useState(""); // ว่าง = ไม่ตั้งเกณฑ์ผ่าน (พฤติกรรมเดิม)
+    const [pass, setPass] = useState<PassCriterionInput>(EMPTY_PASS_CRITERION); // ว่าง = ไม่ตั้งเกณฑ์ผ่าน (พฤติกรรมเดิม)
     const [prodCategoryId, setProdCategoryId] = useState("");
     const [commissionStaffId, setCommissionStaffId] = useState("");
     const [commissionType, setCommissionType] = useState<"percent" | "fixed">("percent");
@@ -183,7 +186,7 @@ export default function CreateProductPage() {
         const fieldErrors = validate(
             prodName, prodPrice, prodComparePrice, isFree, examDuration, commissionStaffId, commissionType, commissionValue,
             entitlementLifetime, entitlementDuration,
-            useScoring, totalScore, passPercent
+            useScoring, totalScore, pass
         );
         if (Object.keys(fieldErrors).length > 0) { setErrors(fieldErrors); return; }
 
@@ -200,7 +203,8 @@ export default function CreateProductPage() {
                     prod_exam_duration_minutes: Number(examDuration) || 60,
                     prod_entitlement_duration_months: entitlementLifetime ? null : Number(entitlementDuration),
                     prod_total_score: useScoring ? Number(totalScore) : null,
-                    prod_pass_percent: passPercent.trim() ? Number(passPercent) : null,
+                    prod_pass_percent: passCriterionPayload(pass).percent,
+                    prod_pass_min: passCriterionPayload(pass).min,
                     prod_category_id: prodCategoryId || null,
                     prod_commission_staff_id: commissionStaffId || null,
                     prod_commission_type: commissionStaffId ? commissionType : null,
@@ -338,13 +342,15 @@ export default function CreateProductPage() {
                     </p>
                 </div>
 
-                <PassPercentField
-                    value={passPercent}
-                    onChange={(v) => {
-                        setPassPercent(v);
-                        if (errors.pass_percent) setErrors((prev) => ({ ...prev, pass_percent: undefined }));
+                <PassCriterionField
+                    criterion={pass}
+                    onChange={(next) => {
+                        setPass(next);
+                        if (errors.pass_criterion) setErrors((prev) => ({ ...prev, pass_criterion: undefined }));
                     }}
-                    error={errors.pass_percent}
+                    unitLabel={useScoring ? "คะแนน" : "ข้อ"}
+                    outOfHint={useScoring ? `คะแนนเต็มของชุดนี้ ${totalScore || "-"} คะแนน` : undefined}
+                    error={errors.pass_criterion}
                 />
 
                 <div>

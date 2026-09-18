@@ -35,12 +35,36 @@ export function validateQuestionScoreInput(value: string, remaining?: number): s
     return undefined;
 }
 
-/** ตรวจเกณฑ์ผ่าน (%) — ว่าง = ไม่ตั้งเกณฑ์ (ผ่าน) · ตรงกับ validatePassPercent ใน product.controller.js */
-export function validatePassPercentInput(value: string): string | undefined {
+/** เกณฑ์ผ่านกำหนดเป็น % หรือ "ขั้นต่ำ" (จำนวนข้อ / คะแนนถ้าชุดใช้ระบบคะแนน) อย่างใดอย่างหนึ่ง */
+export type PassMode = "percent" | "min";
+export type PassCriterionInput = { mode: PassMode; value: string };
+export const EMPTY_PASS_CRITERION: PassCriterionInput = { mode: "percent", value: "" };
+
+/** ตรวจเกณฑ์ผ่าน — ว่าง = ไม่ตั้งเกณฑ์ (ผ่าน) · ตรงกับ validatePassCriterion ใน product.controller.js */
+export function validatePassCriterionInput({ mode, value }: PassCriterionInput, scored: boolean): string | undefined {
     if (!value.trim()) return undefined;
     const num = Number(value);
-    if (!Number.isInteger(num) || num < 1 || num > 100) return "เกณฑ์ผ่านต้องเป็นจำนวนเต็ม 1-100 (%) หรือเว้นว่างถ้าไม่ตั้งเกณฑ์";
+    if (mode === "percent") {
+        if (!Number.isInteger(num) || num < 1 || num > 100) return "แบบ % ต้องเป็นจำนวนเต็ม 1-100 หรือเว้นว่างถ้าไม่ตั้งเกณฑ์";
+        return undefined;
+    }
+    if (!Number.isFinite(num) || num <= 0) return "ขั้นต่ำต้องมากกว่า 0";
+    if (!scored && !Number.isInteger(num)) return "จำนวนข้อขั้นต่ำต้องเป็นจำนวนเต็ม";
+    if (scored && hasTooManyDecimals(num)) return "คะแนนขั้นต่ำมีทศนิยมได้ไม่เกิน 2 ตำแหน่ง";
     return undefined;
+}
+
+/** แปลงค่าในฟอร์มเป็นคู่ฟิลด์ที่ backend รับ (ส่งค่าเดียว อีกตัวเป็น null) */
+export function passCriterionPayload({ mode, value }: PassCriterionInput): { percent: number | null; min: number | null } {
+    const num = value.trim() ? Number(value) : null;
+    return { percent: mode === "percent" ? num : null, min: mode === "min" ? num : null };
+}
+
+/** ค่าจาก backend → ค่าในฟอร์ม */
+export function passCriterionFromApi(percent: number | string | null | undefined, min: number | string | null | undefined): PassCriterionInput {
+    if (percent != null) return { mode: "percent", value: String(percent) };
+    if (min != null) return { mode: "min", value: formatScore(min) };
+    return EMPTY_PASS_CRITERION;
 }
 
 /** ตัดศูนย์ท้ายทศนิยมทิ้งเพื่อให้อ่านง่าย: 2.00 -> "2", 2.50 -> "2.5" */

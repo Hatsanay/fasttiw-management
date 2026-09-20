@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { api } from "@/app/constans";
+import { api, apiOrigin } from "@/app/constans";
 import { authHeader } from "@/app/lib/auth";
 import { formatBaht, effectivePrice } from "@/app/function";
 import SearchInput from "@/components/ui/SearchInput";
@@ -22,7 +22,7 @@ type CouponInfo = { cpn_id: string; cpn_code: string; cpn_discount_type: "percen
 type CouponRow = { cpn_code: string; cpn_discount_type: "percent" | "fixed"; cpn_discount_value: number };
 
 const PAGE_SIZE = 8;
-const SERVER_BASE = new URL(api).origin;
+const SERVER_BASE = apiOrigin;
 
 // ปุ่มลัดพื้นฐาน — ให้เลือกระยะเวลาเองได้อิสระเสมอ (ไม่บังคับ) เผื่อกรณีพิเศษที่แอดมินตัดสินใจเอง
 const BASE_DURATION_OPTIONS = [

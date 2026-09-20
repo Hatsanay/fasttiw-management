@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import DataTable, { Column } from "@/components/ui/datatable/datatable";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { api } from "@/app/constans";
+import { authHeader } from "@/app/lib/auth";
 import formatDate from "@/app/function";
 import { toast } from "sonner";
 
@@ -30,24 +31,22 @@ const ACTION_COLOR: Record<LoginLog["log_action"], string> = {
 };
 
 async function fetchLogs(params: { limit: number; offset: number; search: string }) {
-    const token = localStorage.getItem("token");
     const query = new URLSearchParams({
         limit: String(params.limit),
         offset: String(params.offset),
         search: params.search,
     });
     const res = await fetch(`${api}/logs?${query}`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { ...authHeader(), },
     });
     if (!res.ok) return { data: [] as LoginLog[], total: 0 };
     return res.json() as Promise<{ data: LoginLog[]; total: number }>;
 }
 
 async function deleteAllLogs() {
-    const token = localStorage.getItem("token");
     const res = await fetch(`${api}/logs`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { ...authHeader(), },
     });
     if (!res.ok) throw new Error("ลบไม่สำเร็จ กรุณาลองใหม่");
 }

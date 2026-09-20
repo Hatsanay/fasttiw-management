@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { api } from "@/app/constans";
+import { api, apiOrigin } from "@/app/constans";
 import { authHeader } from "@/app/lib/auth";
 import { formatBaht } from "@/app/function";
 import Button from "@/components/ui/Button/Button";
@@ -33,7 +33,7 @@ type Product = {
 
 type Category = { cat_id: string; cat_name: string };
 
-const SERVER_BASE = new URL(api).origin;
+const SERVER_BASE = apiOrigin;
 const PAGE_SIZE_OPTIONS = [24, 48, 96, 192];
 
 const STATUS_LABEL: Record<Product["prod_status"], string> = {

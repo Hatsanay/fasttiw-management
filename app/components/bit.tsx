@@ -166,6 +166,8 @@ export const MENU_DEFS: MenuItem[] = [
     { key: "visitorStats", label: "สถิติผู้เยี่ยมชม", href: "/visitors" },
     // สนามสอบเสมือนจริง (2026-09-18) — ต่อท้ายตามกฎ ตำแหน่งบนเมนูจัดที่ MENU_DISPLAY_ORDER (อยู่ใต้ชุดข้อสอบ)
     { key: "mockExamsManagement", label: "สนามสอบเสมือน", href: "/mock-exams" },
+    // ประวัติการแก้ไขข้อมูล (2026-09-20) — ต่อท้ายตามกฎ แสดงในเมนูย่อยของ "ตั้งค่าระบบ" (ดู MENU_DISPLAY_ORDER)
+    { key: "auditLogs", label: "ประวัติระบบ", href: "/settings/audit-logs" },
 ];
 
 // ─── Permission groups (used by create/edit role page) ────────────────────────
@@ -349,6 +351,12 @@ export const PERMISSION_GROUPS: PermGroup[] = [
             { key: "mockExamsManagement", label: "จัดการสนามสอบเสมือน", href: "/mock-exams" },
         ],
     },
+    {
+        groupLabel: "ประวัติการแก้ไขข้อมูล",
+        bits: [
+            { key: "auditLogs", label: "ดูประวัติการแก้ไขข้อมูล", href: "/settings/audit-logs" },
+        ],
+    },
 ];
 
 // Start index (in flat bitmask) for each group
@@ -373,7 +381,7 @@ export function getLeaves(items: MenuItem[]): MenuItem[] {
 // ผูกกับตำแหน่งบิตของ role_permission ที่บันทึกไว้ใน DB แล้ว (ห้ามสลับ/แทรกกลาง มีแต่ต่อท้ายได้)
 // แต่ลำดับที่โชว์บน sidebar ปรับได้อิสระโดยไม่กระทบสิทธิ์เดิมเลย เพราะแค่จัดเรียง key ที่แสดงผล
 // ตั้งค่าระบบอยู่ล่างสุดเสมอตามที่ต้องการ — เพิ่มเมนูใหม่ในอนาคตให้ใส่ key ไว้ก่อน "settings" เสมอ
-export const MENU_DISPLAY_ORDER = ["dashboard", "visitorStats", "usersManagement", "customersManagement", "products", "mockExamsManagement", "packagesManagement", "categories", "couponsManagement", "newsManagement", "chatManagement", "expensesManagement", "payrollManagement", "partnersManagement", "partnerDistributionsManagement", "reportsManagement", "paymentSettings", "settings"];
+export const MENU_DISPLAY_ORDER = ["dashboard", "visitorStats", "usersManagement", "customersManagement", "products", "mockExamsManagement", "packagesManagement", "categories", "couponsManagement", "newsManagement", "chatManagement", "expensesManagement", "payrollManagement", "partnersManagement", "partnerDistributionsManagement", "reportsManagement", "paymentSettings", "auditLogs", "settings"];
 
 export function getVisibleItems(items: MenuItem[], bitmask: string): MenuItem[] {
     const leaves = getLeaves(items);

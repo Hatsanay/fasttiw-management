@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/app/constans";
+import { authHeader } from "@/app/lib/auth";
 import Button from "@/components/ui/Button/Button";
 import Input from "@/components/ui/Input/input";
 
@@ -35,13 +36,10 @@ export default function CreateDepartmentPage() {
         const fieldErrors = validate(depName);
         if (Object.keys(fieldErrors).length > 0) { setErrors(fieldErrors); return; }
 
-        const token = localStorage.getItem("token");
-        if (!token) { setError("ไม่พบ token กรุณาเข้าสู่ระบบใหม่"); return; }
-
         startTransition(async () => {
             const res = await fetch(`${api}/departments`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                headers: { "Content-Type": "application/json", ...authHeader(), },
                 body: JSON.stringify({ dep_name: depName }),
             });
 

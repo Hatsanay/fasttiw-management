@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { api } from "@/app/constans";
+import { api, apiOrigin } from "@/app/constans";
 import { authHeader } from "@/app/lib/auth";
 import { loadCategoryOptions } from "@/app/lib/categoryOptions";
 import Button from "@/components/ui/Button/Button";
@@ -63,7 +63,7 @@ async function loadStaffOptions(search: string) {
     return data.map((u) => ({ value: u.user_id, label: u.by_fullname }));
 }
 
-const SERVER_BASE = new URL(api).origin;
+const SERVER_BASE = apiOrigin;
 
 type FormErrors = {
     prod_name?: string; prod_price?: string; prod_compare_price?: string; exam_duration?: string; commission_value?: string; entitlement_duration?: string; total_score?: string;

@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import DataTable, { Column } from "@/components/ui/datatable/datatable";
 import { api } from "@/app/constans";
+import { authHeader } from "@/app/lib/auth";
 import formatDate from "@/app/function";
 import Button from "@/components/ui/Button/Button";
 import EditButton from "@/components/ui/Button/EditButton";
@@ -21,14 +22,13 @@ type Department = {
 };
 
 async function fetchDepartments(params: { limit: number; offset: number; search: string }) {
-    const token = localStorage.getItem("token");
     const query = new URLSearchParams({
         limit: String(params.limit),
         offset: String(params.offset),
         search: params.search,
     });
     const res = await fetch(`${api}/departments?${query}`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { ...authHeader(), },
     });
     if (!res.ok) return { data: [] as Department[], total: 0 };
     return res.json() as Promise<{ data: Department[]; total: number }>;
@@ -66,12 +66,11 @@ export default function DepartmentSettingsPage() {
 
     async function handleDelete() {
         if (!deleteTarget) return;
-        const token = localStorage.getItem("token");
         setIsDeleting(true);
         try {
             const res = await fetch(`${api}/departments/${deleteTarget.dep_id}`, {
                 method: "DELETE",
-                headers: { Authorization: `Bearer ${token}` },
+                headers: { ...authHeader(), },
             });
             if (res.ok) {
                 setDepartments((prev) => prev.filter((d) => d.dep_id !== deleteTarget.dep_id));

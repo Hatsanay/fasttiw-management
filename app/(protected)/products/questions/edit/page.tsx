@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { api } from "@/app/constans";
+import { api, apiOrigin } from "@/app/constans";
 import { authHeader } from "@/app/lib/auth";
 import { loadTopicOptions } from "@/app/lib/categoryOptions";
 import { uploadQuestionImage, deleteQuestionImage, uploadChoiceImage } from "@/app/lib/questionImage";
@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import { validateQuestionScoreInput, formatScore, MAX_QUESTION_SCORE } from "@/app/lib/scoring";
 
 const MAX_CHOICES = 6;
-const SERVER_BASE = new URL(api).origin;
+const SERVER_BASE = apiOrigin;
 
 // key เป็น id ฝั่ง client เท่านั้น (สุ่มตอนโหลด/เพิ่มแถวใหม่) ใช้เป็น React key แทน index — กัน
 // DragDropImage (เก็บ preview เป็น internal state) โดน React reuse ข้ามแถวตอนลบตัวเลือกกลางลิสต์แล้วแถว

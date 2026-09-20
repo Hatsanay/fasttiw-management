@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import DataTable, { Column } from "@/components/ui/datatable/datatable";
 import { api } from "@/app/constans";
+import { authHeader } from "@/app/lib/auth";
 import formatDate from "@/app/function";
 import Button from "@/components/ui/Button/Button";
 import ViewButton from "@/components/ui/Button/ViewButton";
@@ -25,14 +26,13 @@ type Role = {
 };
 
 async function fetchRoles(params: { limit: number; offset: number; search: string }) {
-    const token = localStorage.getItem("token");
     const query = new URLSearchParams({
         limit:  String(params.limit),
         offset: String(params.offset),
         search: params.search,
     });
     const res = await fetch(`${api}/roles?${query}`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { ...authHeader(), },
     });
     if (!res.ok) return { data: [] as Role[], total: 0 };
     return res.json() as Promise<{ data: Role[]; total: number }>;
@@ -62,12 +62,11 @@ export default function RoleSettingsPage() {
 
     async function handleDelete() {
         if (!deleteTarget) return;
-        const token = localStorage.getItem("token");
         setIsDeleting(true);
         try {
             const res = await fetch(`${api}/roles/${deleteTarget.role_id}`, {
                 method: "DELETE",
-                headers: { Authorization: `Bearer ${token}` },
+                headers: { ...authHeader(), },
             });
             if (res.ok) {
                 setRoles((prev) => prev.filter((r) => r.role_id !== deleteTarget.role_id));

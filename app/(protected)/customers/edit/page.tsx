@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { api } from "@/app/constans";
+import { api, apiOrigin } from "@/app/constans";
 import { authHeader } from "@/app/lib/auth";
 import Button from "@/components/ui/Button/Button";
 import Input from "@/components/ui/Input/input";
@@ -75,7 +75,7 @@ async function uploadAvatar(id: string, file: File) {
     });
 }
 
-const SERVER_BASE = new URL(api).origin;
+const SERVER_BASE = apiOrigin;
 
 const EMPTY_FORM: FormState = {
     cus_username: "", cus_fname: "", cus_lname: "", cus_email: "", cus_phone: "", cus_status: "active",

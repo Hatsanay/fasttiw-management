@@ -2,10 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MessageCircle, Send, Image as ImageIcon, User, ArrowLeft, Download, X } from "lucide-react";
-import { api } from "@/app/constans";
+import { api, apiOrigin } from "@/app/constans";
 import { authHeader } from "@/app/lib/auth";
 
-const SERVER_BASE = new URL(api).origin;
+const SERVER_BASE = apiOrigin;
 const LIST_POLL_MS = 3000;
 const THREAD_POLL_MS = 2500;
 

@@ -10,7 +10,8 @@ import EditButton from "@/components/ui/Button/EditButton";
 import DeleteButton from "@/components/ui/Button/DeleteButton";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import GrantProductsModal from "@/components/ui/GrantProductsModal";
-import { PackagePlus } from "lucide-react";
+import CustomerLoginHistoryModal from "@/components/ui/CustomerLoginHistoryModal";
+import { History, PackagePlus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { usePermission, BITS } from "@/app/components/permission-provider";
 import { toast } from "sonner";
@@ -78,6 +79,7 @@ export default function CustomersPage() {
 
     // ลูกค้าที่กำลังจะเพิ่มสิทธิ์ให้ (null = ปิด modal) — ใช้ modal ตัวเดียวกับตอนสร้างลูกค้าใหม่
     const [grantTarget, setGrantTarget] = useState<Customer | null>(null);
+    const [historyTarget, setHistoryTarget] = useState<Customer | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<Customer | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
 
@@ -184,6 +186,14 @@ export default function CustomersPage() {
                                 <PackagePlus className="w-4 h-4" />
                             </button>
                         )}
+                        <button
+                            type="button"
+                            onClick={() => setHistoryTarget(row)}
+                            title="ประวัติการเข้าสู่ระบบ / สัญญาณการแชร์บัญชี"
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                        >
+                            <History className="w-4 h-4" />
+                        </button>
                         {hasBit(BITS.editCustomer) && (
                             <EditButton onClick={() => router.push(`/customers/edit?id=${row.cus_id}`)} />
                         )}
@@ -200,6 +210,14 @@ export default function CustomersPage() {
                 onClose={() => setGrantTarget(null)}
                 onDone={reload}
             />
+
+            {historyTarget && (
+                <CustomerLoginHistoryModal
+                    customerId={historyTarget.cus_id}
+                    customerName={historyTarget.cus_fullname ?? historyTarget.cus_username}
+                    onClose={() => setHistoryTarget(null)}
+                />
+            )}
 
             <ConfirmDialog
                 open={!!deleteTarget}

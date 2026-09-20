@@ -8,3 +8,17 @@ export function toDateInput(d: Date): string {
     const day = String(d.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
 }
+
+// วันเวลาแบบไทย ตรึง timeZone ไว้ที่กรุงเทพฯ เสมอ — เครื่องของแอดมินอาจตั้ง timezone อื่นไว้ (หรือเปิดจาก
+// ต่างประเทศ) แล้วเวลาในตารางประวัติจะไม่ตรงกับที่ลูกค้าเห็น ซึ่งทำให้ไล่เหตุการณ์ย้อนหลังผิดตัว
+export function thaiDateTime(value: string | null | undefined, { year = false } = {}): string {
+    if (!value) return "—";
+    return new Date(value).toLocaleString("th-TH", {
+        day: "2-digit",
+        month: "short",
+        ...(year ? { year: "numeric" as const } : {}),
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZone: "Asia/Bangkok",
+    });
+}

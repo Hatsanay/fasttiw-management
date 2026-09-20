@@ -2,13 +2,14 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { api } from "@/app/constans";
+import { api, apiOrigin } from "@/app/constans";
+import { authHeader } from "@/app/lib/auth";
 import formatDate from "@/app/function";
 import Image from "next/image";
 
 async function fetchUser(id: string) {
     const res = await window.fetch(`${api}/users/${id}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        headers: { ...authHeader(), },
     });
     if (!res.ok) return null;
     return res.json();
@@ -23,7 +24,7 @@ function Field({ label, value }: { label: string; value?: string | null }) {
     );
 }
 
-const SERVER_BASE = new URL(api).origin;
+const SERVER_BASE = apiOrigin;
 
 export default function ViewUserPage() {
     const router = useRouter();

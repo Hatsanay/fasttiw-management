@@ -3,15 +3,11 @@
 import { useRef, useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/app/constans";
+import { authHeader, currentUserId } from "@/app/lib/auth";
 import { PERMISSION_GROUPS, GROUP_STARTS, TOTAL_BITS } from "@/app/components/bit";
 import Button from "@/components/ui/Button/Button";
 import Input from "@/components/ui/Input/input";
 import SearchableSelect from "@/components/ui/SearchableSelect";
-
-function decodeToken(token: string): { user_id: number } {
-    const payload = token.split(".")[1];
-    return JSON.parse(atob(payload));
-}
 
 function IndeterminateCheckbox({
     indeterminate,
@@ -49,10 +45,9 @@ export default function CreateRolePage() {
     }
 
     async function loadDepartmentOptions(search: string) {
-        const token = localStorage.getItem("token");
         const res = await fetch(
             `${api}/departments?${new URLSearchParams({ limit: "20", offset: "0", status: "active", search })}`,
-            { headers: { Authorization: `Bearer ${token}` } }
+            { headers: { ...authHeader(), } }
         );
         if (!res.ok) return [];
         const { data } = await res.json() as { data: { dep_id: string; dep_name: string }[] };
@@ -102,17 +97,14 @@ export default function CreateRolePage() {
 
         const fieldErrors = validate(roleName);
         if (Object.keys(fieldErrors).length > 0) { setErrors(fieldErrors); return; }
-
-        const token = localStorage.getItem("token");
-        if (!token) { setError("ไม่พบ token กรุณาเข้าสู่ระบบใหม่"); return; }
-
-        const { user_id } = decodeToken(token);
+        const user_id = currentUserId();
+        if (!user_id) { setError("ไม่พบข้อมูลผู้ใช้ กรุณาเข้าสู่ระบบใหม่"); return; }
         const role_permission = checked.map((v) => (v ? "1" : "0")).join("");
 
         startTransition(async () => {
             const res = await fetch(`${api}/roles`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                headers: { "Content-Type": "application/json", ...authHeader(), },
                 body: JSON.stringify({
                     role_name: roleName, role_permission, role_granted_by_id: user_id,
                     role_type: "R", role_department: department,

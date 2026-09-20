@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { api } from "@/app/constans";
+import { api, apiOrigin } from "@/app/constans";
 import { authHeader } from "@/app/lib/auth";
 import { CheckCircle2, XCircle, FileUp, FileDown, Trash2 } from "lucide-react";
 import Button from "@/components/ui/Button/Button";
@@ -17,7 +17,7 @@ import { clampPage } from "@/app/lib/clampPage";
 import { formatScore } from "@/app/lib/scoring";
 import { toast } from "sonner";
 
-const SERVER_BASE = new URL(api).origin;
+const SERVER_BASE = apiOrigin;
 
 type Choice = {
     cho_id: string;

@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/app/constans";
+import { authHeader } from "@/app/lib/auth";
 import { PERMISSION_GROUPS, GROUP_STARTS } from "@/app/components/bit";
 
 type Role = {
@@ -16,9 +17,8 @@ type Role = {
 };
 
 async function fetchRoleById(id: string): Promise<Role | null> {
-    const token = localStorage.getItem("token");
     const res = await fetch(`${api}/roles/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { ...authHeader(), },
     });
     if (!res.ok) return null;
     return res.json();

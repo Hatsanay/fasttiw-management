@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { api } from "@/app/constans";
+import { api, apiOrigin } from "@/app/constans";
 import { authHeader } from "@/app/lib/auth";
 import Button from "@/components/ui/Button/Button";
 import Input from "@/components/ui/Input/input";
@@ -100,7 +100,7 @@ async function resetPassword(id: string): Promise<{ temp_password: string }> {
     return data;
 }
 
-const SERVER_BASE = new URL(api).origin;
+const SERVER_BASE = apiOrigin;
 
 const EMPTY_FORM: FormState = {
     user_fname: "", user_lname: "", user_email: "", user_phone: "",

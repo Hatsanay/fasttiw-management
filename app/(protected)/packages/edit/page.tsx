@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { api } from "@/app/constans";
+import { api, apiOrigin } from "@/app/constans";
 import { authHeader } from "@/app/lib/auth";
 import { formatBaht, effectivePrice } from "@/app/function";
 import Button from "@/components/ui/Button/Button";
@@ -11,7 +11,7 @@ import Form from "@/components/ui/form/Form";
 import ProductPicker, { PickerProduct } from "@/components/ui/ProductPicker";
 import DragDropImage from "@/components/ui/DragDropImage";
 
-const SERVER_BASE = new URL(api).origin;
+const SERVER_BASE = apiOrigin;
 
 type PackageDetail = {
     pkg_id: string;

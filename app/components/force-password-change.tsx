@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { api } from "@/app/constans";
+import { authHeader } from "@/app/lib/auth";
+import { refreshSessionCookie } from "@/app/login/actions";
 import Input from "@/components/ui/Input/input";
 import Button from "@/components/ui/Button/Button";
 
@@ -33,12 +35,16 @@ export default function ForcePasswordChange() {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${localStorage.getItem("token")}`,
+                    ...authHeader(),
                 },
                 body: JSON.stringify({ new_password: newPassword }),
             });
             const data = await res.json().catch(() => ({}));
             if (!res.ok) throw new Error(data.message ?? "เกิดข้อผิดพลาด");
+
+            // backend เตะทุกอุปกรณ์ออกตอนเปลี่ยนรหัสผ่าน แล้วออก token ใบใหม่ให้เครื่องนี้ —
+            // ต้องเขียนทับ cookie ไม่งั้นคำขอถัดไปจะโดนปฏิเสธเพราะ session เดิมถูกลบไปแล้ว
+            if (data.token) await refreshSessionCookie(data.token);
 
             toast.success("เปลี่ยนรหัสผ่านสำเร็จ");
             router.refresh();

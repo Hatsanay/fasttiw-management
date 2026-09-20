@@ -11,10 +11,10 @@ import {
     Newspaper, CreditCard, LayoutGrid, GalleryHorizontal, ChevronUp, ChevronDown, ChevronLeft, ChevronRight,
     SlidersHorizontal, SquarePlay,
 } from "lucide-react";
-import { api } from "@/app/constans";
+import { apiOrigin } from "@/app/constans";
 import DragDropImage from "@/components/ui/DragDropImage";
 
-export const SERVER_BASE = new URL(api).origin;
+export const SERVER_BASE = apiOrigin;
 
 export type BlockType = "text" | "image" | "heading" | "button" | "post" | "card" | "card_set" | "carousel" | "youtube";
 export const REPEATING_TYPES: BlockType[] = ["card_set", "carousel"];

@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/app/constans";
+import { authHeader } from "@/app/lib/auth";
 import Button from "@/components/ui/Button/Button";
 import Input from "@/components/ui/Input/input";
 
@@ -13,9 +14,8 @@ type Department = {
 };
 
 async function fetchDepartmentById(id: string): Promise<Department | null> {
-    const token = localStorage.getItem("token");
     const res = await fetch(`${api}/departments/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { ...authHeader(), },
     });
     if (!res.ok) return null;
     return res.json();
@@ -65,13 +65,10 @@ export default function EditDepartmentPage() {
         const fieldErrors = validate(depName);
         if (Object.keys(fieldErrors).length > 0) { setErrors(fieldErrors); return; }
 
-        const token = localStorage.getItem("token");
-        if (!token) { setError("ไม่พบ token กรุณาเข้าสู่ระบบใหม่"); return; }
-
         startTransition(async () => {
             const res = await fetch(`${api}/departments/${id}`, {
                 method: "PUT",
-                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                headers: { "Content-Type": "application/json", ...authHeader(), },
                 body: JSON.stringify({ dep_name: depName, dep_status: depStatus }),
             });
 

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
-import { api } from "@/app/constans";
+import { api, apiOrigin } from "@/app/constans";
 import { authHeader } from "@/app/lib/auth";
 import { formatBaht } from "@/app/function";
 import SearchInput from "@/components/ui/SearchInput";
@@ -11,7 +11,7 @@ import SearchInput from "@/components/ui/SearchInput";
 export type PickerProduct = { prod_id: string; prod_name: string; prod_price: number; prod_is_free: boolean; prod_cover_url: string | null };
 
 const PAGE_SIZE = 8;
-const SERVER_BASE = new URL(api).origin;
+const SERVER_BASE = apiOrigin;
 
 async function fetchPublishedProducts(params: { limit: number; offset: number; search: string }) {
     const query = new URLSearchParams({

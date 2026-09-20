@@ -2,12 +2,15 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { api } from "@/app/constans";
-import { authHeader } from "@/app/lib/auth";
+import { api, apiOrigin } from "@/app/constans";
+import { authHeader, currentUserId } from "@/app/lib/auth";
 import Button from "@/components/ui/Button/Button";
 import Input from "@/components/ui/Input/input";
 import Form from "@/components/ui/form/Form";
 import AvatarCrop from "@/components/ui/AvatarCrop";
+import TwoFactorSection from "./TwoFactorSection";
+import SessionsSection from "./SessionsSection";
+import { refreshSessionCookie } from "@/app/login/actions";
 import { toast } from "sonner";
 
 type FormState = {
@@ -20,11 +23,6 @@ type FormState = {
 };
 
 type FormErrors = Partial<Record<keyof FormState, string>>;
-
-function decodeToken(token: string): { user_id: string } {
-    const payload = token.split(".")[1];
-    return JSON.parse(atob(payload));
-}
 
 function validate(form: FormState): FormErrors {
     const errors: FormErrors = {};
@@ -79,6 +77,9 @@ async function submitChangePassword(newPassword: string) {
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.message ?? "เกิดข้อผิดพลาด");
+    // backend เตะทุกอุปกรณ์ออกตอนเปลี่ยนรหัสผ่าน แล้วออก token ใบใหม่ให้เครื่องนี้ —
+    // ต้องเขียนทับ cookie ไม่งั้นเครื่องที่เพิ่งเปลี่ยนรหัสเองจะหลุดออกไปด้วย
+    if (data.token) await refreshSessionCookie(data.token);
 }
 
 const EMPTY_FORM: FormState = {
@@ -86,7 +87,7 @@ const EMPTY_FORM: FormState = {
     user_phone: "", user_line_id: "", user_whatApp_no: "",
 };
 
-const SERVER_BASE = new URL(api).origin;
+const SERVER_BASE = apiOrigin;
 
 export default function ProfilePage() {
     const router = useRouter();
@@ -116,9 +117,8 @@ export default function ProfilePage() {
     }
 
     useEffect(() => {
-        const token = localStorage.getItem("token");
-        if (!token) return;
-        const { user_id } = decodeToken(token);
+        const user_id = currentUserId();
+        if (!user_id) return;
 
         startTransition(async () => {
             const data = await fetchMyProfile(user_id);
@@ -287,6 +287,10 @@ export default function ProfilePage() {
                     </div>
                 </form>
             </div>
+
+            <TwoFactorSection />
+
+            <SessionsSection />
         </div>
     );
 }

@@ -3,6 +3,7 @@
 import { useRef, useEffect, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/app/constans";
+import { authHeader } from "@/app/lib/auth";
 import { PERMISSION_GROUPS, GROUP_STARTS, TOTAL_BITS } from "@/app/components/bit";
 import Button from "@/components/ui/Button/Button";
 import Input from "@/components/ui/Input/input";
@@ -20,9 +21,8 @@ function IndeterminateCheckbox({
 }
 
 async function fetchRoleById(id: string) {
-    const token = localStorage.getItem("token");
     const res = await fetch(`${api}/roles/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { ...authHeader(), },
     });
     if (!res.ok) return null;
     return res.json() as Promise<{
@@ -70,10 +70,9 @@ export default function EditRolePage() {
     }, [id]);
 
     async function loadDepartmentOptions(search: string) {
-        const token = localStorage.getItem("token");
         const res = await fetch(
             `${api}/departments?${new URLSearchParams({ limit: "20", offset: "0", status: "active", search })}`,
-            { headers: { Authorization: `Bearer ${token}` } }
+            { headers: { ...authHeader(), } }
         );
         if (!res.ok) return [];
         const { data } = await res.json() as { data: { dep_id: string; dep_name: string }[] };
@@ -121,15 +120,12 @@ export default function EditRolePage() {
         const fieldErrors = validate(roleName);
         if (Object.keys(fieldErrors).length > 0) { setErrors(fieldErrors); return; }
 
-        const token = localStorage.getItem("token");
-        if (!token) { setError("ไม่พบ token กรุณาเข้าสู่ระบบใหม่"); return; }
-
         const role_permission = checked.map((v) => (v ? "1" : "0")).join("");
 
         startTransition(async () => {
             const res = await fetch(`${api}/roles/${id}`, {
                 method: "PUT",
-                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                headers: { "Content-Type": "application/json", ...authHeader(), },
                 body: JSON.stringify({ role_name: roleName, role_permission, role_department: department }),
             });
 

@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Check, X } from "lucide-react";
-import { api } from "@/app/constans";
+import { api, apiOrigin } from "@/app/constans";
 import { authHeader } from "@/app/lib/auth";
 
-const SERVER_BASE = new URL(api).origin;
+const SERVER_BASE = apiOrigin;
 const STATUS_LABEL: Record<string, string> = { draft: "ฉบับร่าง", published: "เผยแพร่แล้ว", archived: "เก็บถาวร" };
 
 type Choice = { cho_id: string; cho_text: string; cho_is_correct: number | boolean; cho_wrong_reason: string | null; cho_image_url: string | null };

@@ -3,9 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { api } from "@/app/constans";
-import { authHeader } from "@/app/lib/auth";
-import { refreshSessionCookie } from "@/app/login/actions";
 import Input from "@/components/ui/Input/input";
 import Button from "@/components/ui/Button/Button";
 
@@ -31,20 +28,15 @@ export default function ForcePasswordChange() {
 
         setPending(true);
         try {
-            const res = await fetch(`${api}/users/me/password`, {
-                method: "PUT",
-                headers: {
-                    "Content-Type": "application/json",
-                    ...authHeader(),
-                },
+            // ผ่าน route ฝั่งเซิร์ฟเวอร์ของเราเอง — token ใบใหม่ที่ backend ออกให้ถูกตั้งเป็น cookie ที่นั่น
+            // ไม่ไหลมาถึง JS (ดูเหตุผลเต็มใน app/api/change-password/route.ts)
+            const res = await fetch("/api/change-password", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ new_password: newPassword }),
             });
             const data = await res.json().catch(() => ({}));
             if (!res.ok) throw new Error(data.message ?? "เกิดข้อผิดพลาด");
-
-            // backend เตะทุกอุปกรณ์ออกตอนเปลี่ยนรหัสผ่าน แล้วออก token ใบใหม่ให้เครื่องนี้ —
-            // ต้องเขียนทับ cookie ไม่งั้นคำขอถัดไปจะโดนปฏิเสธเพราะ session เดิมถูกลบไปแล้ว
-            if (data.token) await refreshSessionCookie(data.token);
 
             toast.success("เปลี่ยนรหัสผ่านสำเร็จ");
             router.refresh();

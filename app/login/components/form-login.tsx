@@ -38,8 +38,8 @@ export default function LoginForm() {
             toast.error(state.error);
         } else if ("require2fa" in state) {
             toast.info(state.message);
-        } else if ("token" in state) {
-            // ไม่เก็บ token ไว้ใน localStorage อีกแล้ว — Server Action ตั้ง cookie httpOnly ให้ตั้งแต่ตอน login
+        } else if ("ok" in state) {
+            // หน้านี้ไม่เคยเห็นตัว token เลย — Server Action ตั้ง cookie httpOnly ให้ที่ฝั่งเซิร์ฟเวอร์
             // (JS อ่านไม่ได้ = XSS ขโมยไปใช้ไม่ได้) ทุกคำขอจากหน้าเว็บวิ่งผ่านตัวกลาง /api/be ที่แนบ token ให้เอง
             router.push("/dashboard");
         }
@@ -76,7 +76,7 @@ export default function LoginForm() {
         if (result && "error" in result) {
             toast.error(result.error);
             setOtp("");
-        } else if (result && "token" in result) {
+        } else if (result && "ok" in result) {
             router.push("/dashboard");
         }
     }

@@ -10,7 +10,6 @@ import Form from "@/components/ui/form/Form";
 import AvatarCrop from "@/components/ui/AvatarCrop";
 import TwoFactorSection from "./TwoFactorSection";
 import SessionsSection from "./SessionsSection";
-import { refreshSessionCookie } from "@/app/login/actions";
 import { toast } from "sonner";
 
 type FormState = {
@@ -69,17 +68,16 @@ async function uploadMyAvatar(file: File) {
     if (!res.ok) throw new Error("อัปโหลดรูปไม่สำเร็จ");
 }
 
+// ยิงไปที่ route ของเว็บเราเอง ไม่ใช่ backend ตรงๆ — backend ออก token ใบใหม่ตอนเปลี่ยนรหัสผ่าน
+// (มันเตะทุก session ทิ้ง) route ฝั่งเซิร์ฟเวอร์รับใบใหม่ไปตั้ง cookie ให้เลย token จึงไม่ผ่านมือ JS
 async function submitChangePassword(newPassword: string) {
-    const res = await fetch(`${api}/users/me/password`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", ...authHeader() },
+    const res = await fetch("/api/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ new_password: newPassword }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.message ?? "เกิดข้อผิดพลาด");
-    // backend เตะทุกอุปกรณ์ออกตอนเปลี่ยนรหัสผ่าน แล้วออก token ใบใหม่ให้เครื่องนี้ —
-    // ต้องเขียนทับ cookie ไม่งั้นเครื่องที่เพิ่งเปลี่ยนรหัสเองจะหลุดออกไปด้วย
-    if (data.token) await refreshSessionCookie(data.token);
 }
 
 const EMPTY_FORM: FormState = {

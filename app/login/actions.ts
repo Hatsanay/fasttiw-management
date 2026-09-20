@@ -3,9 +3,17 @@
 import { cookies } from "next/headers";
 import { api, apiOrigin } from "../constans";
 import { forwardedClientHeaders } from "../lib/clientIp";
+import { setTokenCookie } from "../lib/sessionCookie";
+
+// cookie ที่ JS อ่านได้ (userId/fullname) ก็ควรติด secure บน production เหมือนกัน — ไม่งั้นก็ถูกส่งข้ามไปทาง http ด้วย
+// (บนเครื่อง dev เป็น http ล้วน ถ้าบังคับ secure เบราว์เซอร์จะทิ้ง cookie ทันทีแล้วล็อกอินไม่ติด)
+const SECURE = process.env.NODE_ENV === "production";
 
 // require2fa = รหัสผ่านถูกแล้วแต่บัญชีนี้เปิดยืนยันสองชั้นไว้ ต้องกรอกรหัสจากอีเมลต่อ (2026-09-20)
-type State = { error: string } | { token: string } | { require2fa: true; challengeToken: string; message: string } | null;
+// **ห้ามใส่ token ลงในค่าที่คืนกลับไป** — ทุกอย่างที่ Server Action return ถูกส่งไปถึง JavaScript ในเบราว์เซอร์
+// ซึ่งทำลายเหตุผลของการเก็บ token ไว้ใน cookie httpOnly ตั้งแต่แรก (หน้า login แค่ต้องรู้ว่า "สำเร็จแล้ว")
+// challengeToken ของ 2FA ยังคืนได้ เพราะไม่ใช่ token ล็อกอิน (ไม่มี jti + บังคับ purpose — ดู CLAUDE.md 6.2.3)
+type State = { error: string } | { ok: true } | { require2fa: true; challengeToken: string; message: string } | null;
 
 export async function handleLogin(_prevState: State, formData: FormData): Promise<State> {
     try {
@@ -66,19 +74,19 @@ async function completeLogin(token: string): Promise<State> {
 
         const { role_permission } = await permRes.json();
 
+        await setTokenCookie(token);
         const cookieStore = await cookies();
-        cookieStore.set("token", token, { httpOnly: true, path: "/", sameSite: "lax" });
-        cookieStore.set("permission", role_permission, { httpOnly: true, path: "/", sameSite: "lax" });
+        cookieStore.set("permission", role_permission, { httpOnly: true, secure: SECURE, path: "/", sameSite: "lax" });
         // userId อ่านได้จาก JS โดยตั้งใจ — เป็นแค่ "รหัสผู้ใช้" ไม่ใช่ของที่ใช้ยืนยันตัวตน (เหมือน fullname)
         // หน้าเว็บบางหน้าต้องรู้ว่าตัวเองเป็นใครเพื่อดึงโปรไฟล์ เดิมแกะเอาจาก JWT ใน localStorage ซึ่งเป็น
         // เหตุผลเดียวที่ทำให้ต้องเก็บ token ไว้ให้ JS อ่านได้ · **ของจริงที่ใช้ยืนยันตัวตนคือ token ใน cookie
         // httpOnly เท่านั้น** ปลอม userId มาก็ไม่มีผล เพราะ backend ตัดสินสิทธิ์จาก token ไม่ใช่จากค่านี้
-        cookieStore.set("userId", String(user_id), { httpOnly: false, path: "/", sameSite: "lax" });
+        cookieStore.set("userId", String(user_id), { httpOnly: false, secure: SECURE, path: "/", sameSite: "lax" });
 
         const fullname = await getFullName();
-        cookieStore.set("fullname", String(fullname), { httpOnly: false, path: "/", sameSite: "lax" });
+        cookieStore.set("fullname", String(fullname), { httpOnly: false, secure: SECURE, path: "/", sameSite: "lax" });
 
-        return { token };
+        return { ok: true };
     } catch (err) {
         console.error("completeLogin failed:", err);
         return { error: "เกิดข้อผิดพลาด กรุณาลองใหม่" };
@@ -93,16 +101,6 @@ function decodeToken(token: string): { user_role_id: number; user_id: number } {
 
 export async function getFullName(): Promise<string> {
     return (await getUserProfile()).fullname;
-}
-
-// อัปเดต token ใน cookie หลังได้ token ใบใหม่จาก backend (เช่น หลังเปลี่ยนรหัสผ่าน ซึ่ง backend
-// เตะ session เดิมทิ้งทั้งหมด) — แอดมินเก็บ token ไว้ 2 ที่: localStorage (client fetch) กับ cookie
-// (Server Component/Server Action) ถ้าอัปเดตแค่ที่เดียว อีกฝั่งจะถือ token ที่ถูกเพิกถอนไปแล้ว
-// แล้วหน้าเว็บจะกลายเป็น "ล็อกอินอยู่ครึ่งเดียว" — เมนู/โปรไฟล์หาย ทั้งที่ยังกดใช้งานหน้าอื่นได้
-export async function refreshSessionCookie(token: string) {
-    if (!token) return;
-    const cookieStore = await cookies();
-    cookieStore.set("token", token, { httpOnly: true, path: "/", sameSite: "lax" });
 }
 
 export async function getUserProfile(): Promise<{

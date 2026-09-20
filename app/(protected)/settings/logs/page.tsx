@@ -7,6 +7,7 @@ import { api } from "@/app/constans";
 import { authHeader } from "@/app/lib/auth";
 import formatDate from "@/app/function";
 import { toast } from "sonner";
+import LogTabs from "../LogTabs";
 
 type LoginLog = {
     log_id: string;
@@ -116,8 +117,9 @@ export default function LoginLogsPage() {
 
     return (
         <div className="p-4 sm:p-6">
+            <LogTabs />
             <div className="flex items-center justify-between mb-6">
-                <h1 className="text-xl sm:text-2xl font-bold text-gray-800">Log ข้อมูล</h1>
+                <h1 className="text-xl sm:text-2xl font-bold text-gray-800">การเข้าสู่ระบบของแอดมิน</h1>
                 {total > 0 && (
                     <button
                         type="button"

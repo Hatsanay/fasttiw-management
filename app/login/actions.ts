@@ -2,6 +2,7 @@
 
 import { cookies } from "next/headers";
 import { api, apiOrigin } from "../constans";
+import { forwardedClientHeaders } from "../lib/clientIp";
 
 // require2fa = รหัสผ่านถูกแล้วแต่บัญชีนี้เปิดยืนยันสองชั้นไว้ ต้องกรอกรหัสจากอีเมลต่อ (2026-09-20)
 type State = { error: string } | { token: string } | { require2fa: true; challengeToken: string; message: string } | null;
@@ -13,7 +14,7 @@ export async function handleLogin(_prevState: State, formData: FormData): Promis
 
         const res = await fetch(`${api}/auth/login`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", ...(await forwardedClientHeaders()) },
             body: JSON.stringify({ user_email, user_password }),
         });
 
@@ -39,7 +40,7 @@ export async function handleLogin2fa(challengeToken: string, otp: string): Promi
     try {
         const res = await fetch(`${api}/auth/login/2fa`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", ...(await forwardedClientHeaders()) },
             body: JSON.stringify({ challenge_token: challengeToken, otp }),
         });
         const data = await res.json().catch(() => ({}));

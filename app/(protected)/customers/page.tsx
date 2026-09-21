@@ -150,6 +150,13 @@ export default function CustomersPage() {
                     </button>
                     <button
                         type="button"
+                        onClick={() => router.push("/exam-rounds")}
+                        className="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded hover:bg-gray-50"
+                    >
+                        รอบสอบ / ผลสอบจริง
+                    </button>
+                    <button
+                        type="button"
                         onClick={() => router.push("/orders")}
                         className="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded hover:bg-gray-50"
                     >

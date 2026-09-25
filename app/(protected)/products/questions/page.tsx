@@ -16,6 +16,7 @@ import { useLatestRequest } from "@/app/lib/useLatestRequest";
 import { clampPage } from "@/app/lib/clampPage";
 import { formatScore } from "@/app/lib/scoring";
 import { toast } from "sonner";
+import { MathText } from "@/app/lib/math";
 
 const SERVER_BASE = apiOrigin;
 
@@ -326,7 +327,7 @@ export default function ProductQuestionsPage() {
                                             />
                                         )}
                                         <span className="whitespace-pre-line">
-                                            {(pageSize === -1 ? 0 : (page - 1) * pageSize) + qi + 1}. {q.ques_text}
+                                            {(pageSize === -1 ? 0 : (page - 1) * pageSize) + qi + 1}. <MathText text={q.ques_text} />
                                         </span>
                                     </p>
                                     <div className="flex items-center gap-2 shrink-0">
@@ -367,9 +368,9 @@ export default function ProductQuestionsPage() {
                                                             className="mb-1.5 h-16 w-auto max-w-32 rounded border border-gray-100 object-contain bg-white"
                                                         />
                                                     )}
-                                                    <p className="whitespace-pre-line">{c.cho_text}</p>
+                                                    <p className="whitespace-pre-line"><MathText text={c.cho_text} /></p>
                                                     {!isCorrect && c.cho_wrong_reason && (
-                                                        <p className="text-xs text-gray-400 mt-0.5 whitespace-pre-line">เหตุผลที่ผิด: {c.cho_wrong_reason}</p>
+                                                        <p className="text-xs text-gray-400 mt-0.5 whitespace-pre-line">เหตุผลที่ผิด: <MathText text={c.cho_wrong_reason} /></p>
                                                     )}
                                                 </div>
                                             </div>
@@ -380,7 +381,7 @@ export default function ProductQuestionsPage() {
                                 {q.ques_explanation && (
                                     <div className="border-t border-gray-100 pt-3">
                                         <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">วิธีคิด</p>
-                                        <p className="text-sm text-gray-600 whitespace-pre-line">{q.ques_explanation}</p>
+                                        <p className="text-sm text-gray-600 whitespace-pre-line"><MathText text={q.ques_explanation} /></p>
                                     </div>
                                 )}
 

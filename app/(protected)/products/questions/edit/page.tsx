@@ -13,6 +13,7 @@ import DragDropImage from "@/components/ui/DragDropImage";
 import { Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { validateQuestionScoreInput, formatScore, MAX_QUESTION_SCORE } from "@/app/lib/scoring";
+import MathTextarea, { MathInlinePreview } from "@/app/components/MathTextarea";
 
 const MAX_CHOICES = 6;
 const SERVER_BASE = apiOrigin;
@@ -156,8 +157,8 @@ export default function EditQuestionPage() {
         if (errors.choices) setErrors((prev) => ({ ...prev, choices: undefined }));
     }
 
-    function handleQuesTextChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
-        setQuesText(e.target.value);
+    function handleQuesTextChange(next: string) {
+        setQuesText(next);
         if (errors.ques_text) setErrors((prev) => ({ ...prev, ques_text: undefined }));
     }
 
@@ -257,15 +258,11 @@ export default function EditQuestionPage() {
             <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-6">
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">คำถาม</label>
-                    <textarea
+                    <MathTextarea
                         value={quesText}
                         onChange={handleQuesTextChange}
                         rows={3}
-                        className={`w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 ${
-                            errors.ques_text
-                                ? "border-red-400 focus:border-red-400 focus:ring-red-500/20"
-                                : "border-gray-300 focus:border-blue-400 focus:ring-blue-500/20"
-                        }`}
+                        error={!!errors.ques_text}
                     />
                     {errors.ques_text && <p className="text-xs text-red-500 mt-1">{errors.ques_text}</p>}
                 </div>
@@ -292,11 +289,10 @@ export default function EditQuestionPage() {
 
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">วิธีคิด (เฉลย)</label>
-                    <textarea
+                    <MathTextarea
                         value={quesExplanation}
-                        onChange={(e) => setQuesExplanation(e.target.value)}
+                        onChange={setQuesExplanation}
                         rows={4}
-                        className="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 border-gray-300 focus:border-blue-400 focus:ring-blue-500/20"
                     />
                 </div>
 
@@ -360,12 +356,15 @@ export default function EditQuestionPage() {
                                         className="w-4 h-4 accent-green-500 shrink-0 mt-2.5"
                                         title="เลือกเป็นคำตอบที่ถูก"
                                     />
-                                    <Input
-                                        value={c.text}
-                                        onChange={(e) => updateChoice(i, { text: e.target.value })}
-                                        placeholder={`ตัวเลือกที่ ${i + 1}`}
-                                        className="flex-1"
-                                    />
+                                    <div className="flex-1">
+                                        <Input
+                                            value={c.text}
+                                            onChange={(e) => updateChoice(i, { text: e.target.value })}
+                                            placeholder={`ตัวเลือกที่ ${i + 1}`}
+                                            className="w-full"
+                                        />
+                                        <MathInlinePreview text={c.text} />
+                                    </div>
                                     <div className="w-20 shrink-0">
                                         <DragDropImage
                                             compact
@@ -395,12 +394,15 @@ export default function EditQuestionPage() {
                                     </button>
                                 )}
                                 {!c.isCorrect && (
-                                    <Input
-                                        value={c.wrongReason}
-                                        onChange={(e) => updateChoice(i, { wrongReason: e.target.value })}
-                                        placeholder="เหตุผลที่ตัวเลือกนี้ผิด (ไม่บังคับ)"
-                                        className="w-full text-sm ml-6"
-                                    />
+                                    <div className="ml-6">
+                                        <Input
+                                            value={c.wrongReason}
+                                            onChange={(e) => updateChoice(i, { wrongReason: e.target.value })}
+                                            placeholder="เหตุผลที่ตัวเลือกนี้ผิด (ไม่บังคับ)"
+                                            className="w-full text-sm"
+                                        />
+                                        <MathInlinePreview text={c.wrongReason} />
+                                    </div>
                                 )}
                             </div>
                         ))}

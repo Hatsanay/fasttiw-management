@@ -13,6 +13,7 @@ import DragDropImage from "@/components/ui/DragDropImage";
 import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { validateQuestionScoreInput, formatScore, MAX_QUESTION_SCORE } from "@/app/lib/scoring";
+import MathTextarea, { MathInlinePreview } from "@/app/components/MathTextarea";
 
 const MAX_CHOICES = 6;
 
@@ -265,16 +266,12 @@ export default function CreateQuestionPage() {
 
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">คำถาม</label>
-                            <textarea
+                            <MathTextarea
                                 value={q.quesText}
-                                onChange={(e) => updateQuestion(qi, { quesText: e.target.value })}
+                                onChange={(next) => updateQuestion(qi, { quesText: next })}
                                 rows={3}
-                                className={`w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 ${
-                                    questionErrors[q.key] && !q.quesText.trim()
-                                        ? "border-red-400 focus:border-red-400 focus:ring-red-500/20"
-                                        : "border-gray-300 focus:border-blue-400 focus:ring-blue-500/20"
-                                }`}
                                 placeholder="พิมพ์คำถาม"
+                                error={!!questionErrors[q.key] && !q.quesText.trim()}
                             />
                         </div>
 
@@ -288,11 +285,10 @@ export default function CreateQuestionPage() {
 
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">วิธีคิด (เฉลย)</label>
-                            <textarea
+                            <MathTextarea
                                 value={q.quesExplanation}
-                                onChange={(e) => updateQuestion(qi, { quesExplanation: e.target.value })}
+                                onChange={(next) => updateQuestion(qi, { quesExplanation: next })}
                                 rows={4}
-                                className="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 border-gray-300 focus:border-blue-400 focus:ring-blue-500/20"
                                 placeholder="อธิบายวิธีคิดทีละขั้น"
                             />
                         </div>
@@ -347,12 +343,15 @@ export default function CreateQuestionPage() {
                                                 className="w-4 h-4 accent-green-500 shrink-0 mt-2.5"
                                                 title="เลือกเป็นคำตอบที่ถูก"
                                             />
-                                            <Input
-                                                value={c.text}
-                                                onChange={(e) => updateChoice(qi, ci, { text: e.target.value })}
-                                                placeholder={`ตัวเลือกที่ ${ci + 1}`}
-                                                className="flex-1"
-                                            />
+                                            <div className="flex-1">
+                                                <Input
+                                                    value={c.text}
+                                                    onChange={(e) => updateChoice(qi, ci, { text: e.target.value })}
+                                                    placeholder={`ตัวเลือกที่ ${ci + 1}`}
+                                                    className="w-full"
+                                                />
+                                                <MathInlinePreview text={c.text} />
+                                            </div>
                                             <div className="w-20 shrink-0">
                                                 <DragDropImage
                                                     compact
@@ -371,12 +370,15 @@ export default function CreateQuestionPage() {
                                             )}
                                         </div>
                                         {!c.isCorrect && (
-                                            <Input
-                                                value={c.wrongReason}
-                                                onChange={(e) => updateChoice(qi, ci, { wrongReason: e.target.value })}
-                                                placeholder="เหตุผลที่ตัวเลือกนี้ผิด (ไม่บังคับ)"
-                                                className="w-full text-sm ml-6"
-                                            />
+                                            <div className="ml-6">
+                                                <Input
+                                                    value={c.wrongReason}
+                                                    onChange={(e) => updateChoice(qi, ci, { wrongReason: e.target.value })}
+                                                    placeholder="เหตุผลที่ตัวเลือกนี้ผิด (ไม่บังคับ)"
+                                                    className="w-full text-sm"
+                                                />
+                                                <MathInlinePreview text={c.wrongReason} />
+                                            </div>
                                         )}
                                     </div>
                                 ))}

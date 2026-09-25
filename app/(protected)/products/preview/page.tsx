@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Check, X } from "lucide-react";
 import { api, apiOrigin } from "@/app/constans";
 import { authHeader } from "@/app/lib/auth";
+import { MathText } from "@/app/lib/math";
 
 const SERVER_BASE = apiOrigin;
 const STATUS_LABEL: Record<string, string> = { draft: "ฉบับร่าง", published: "เผยแพร่แล้ว", archived: "เก็บถาวร" };
@@ -79,7 +80,7 @@ export default function ProductPreviewPage() {
                             )}
                             <h2 className="font-medium text-gray-800 leading-relaxed whitespace-pre-line mb-3">
                                 <span className="text-gray-400 mr-1.5">ข้อ {i + 1}.</span>
-                                {q.ques_text}
+                                <MathText text={q.ques_text} />
                             </h2>
 
                             <div className="flex flex-col gap-2 mb-3">
@@ -99,7 +100,7 @@ export default function ProductPreviewPage() {
                                                         className="mb-1.5 h-16 w-auto max-w-32 rounded border border-gray-100 object-contain bg-white"
                                                     />
                                                 )}
-                                                {c.cho_text}
+                                                <MathText text={c.cho_text} />
                                             </span>
                                             {c.cho_is_correct ? (
                                                 <Check size={15} className="text-green-600 shrink-0" />
@@ -108,7 +109,7 @@ export default function ProductPreviewPage() {
                                             )}
                                         </div>
                                         {!c.cho_is_correct && c.cho_wrong_reason && (
-                                            <p className="text-xs text-gray-400 mt-1 px-1">{c.cho_wrong_reason}</p>
+                                            <p className="text-xs text-gray-400 mt-1 px-1"><MathText text={c.cho_wrong_reason} /></p>
                                         )}
                                     </div>
                                 ))}
@@ -117,7 +118,7 @@ export default function ProductPreviewPage() {
                             {q.ques_explanation && (
                                 <div className="p-3 rounded-lg bg-blue-50/60 border border-blue-100">
                                     <p className="text-xs font-medium text-blue-700 mb-1">วิธีคิด</p>
-                                    <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">{q.ques_explanation}</p>
+                                    <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line"><MathText text={q.ques_explanation} /></p>
                                 </div>
                             )}
                         </div>

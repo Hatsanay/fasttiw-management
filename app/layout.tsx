@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { Toaster } from "sonner";
 import "./globals.css";
+// สไตล์ของ KaTeX สำหรับสูตรคณิตศาสตร์ในโจทย์/เฉลย (ดู app/lib/math.tsx)
+import "katex/dist/katex.min.css";
 
 const kanit = localFont({
   src: "../font/Kanit-Regular.ttf",

@@ -7,16 +7,18 @@ const backendUrl = process.env.NEXT_PUBLIC_API_URL
         ? "https://fasttiwbackend.fasttiw.com/api/V1" // production (ย้ายจาก dktimeh.com แล้ว)
         : "http://localhost:3003/api/V1");
 
-// แยกไว้ให้ตัวกลาง /api/be ประกอบ URL ปลายทาง และให้หน้าเว็บสร้าง URL ของรูปที่ backend เสิร์ฟ
+// URL ของ backend แบบแยกส่วน — ใช้ประกอบลิงก์รูปจาก /uploads และใช้ใน Route Handler ที่ต้องยิง backend ตรง
+// (ฝั่ง browser `api` เป็น path สัมพัทธ์แล้ว ใช้ new URL(api) ไม่ได้ จึง export ค่าที่แยกไว้ให้ใช้แทน)
 const apiOrigin = new URL(backendUrl).origin;
+// ตัด "/" ท้ายออกเสมอ — ถ้า NEXT_PUBLIC_API_URL ถูกตั้งแบบมี "/" ปิดท้าย ปลายทางจะกลายเป็น ".../V1//users"
+// ซึ่ง backend หา route ไม่เจอ หน้าแอดมินเรียก API ไม่ได้ทั้งหมด (เวอร์ชัน 2026-09-20 มีบรรทัดนี้ แล้วหลุดหายไปทีหลัง)
 const apiBasePath = new URL(backendUrl).pathname.replace(/\/$/, "");
 
-// **ฝั่ง server ยิงตรงไป backend · ฝั่ง browser ยิงผ่านตัวกลาง /api/be** (2026-09-20)
-// เหตุผล: token ย้ายไปอยู่ใน cookie httpOnly แล้ว (JS อ่านไม่ได้ กัน XSS ขโมย token) เบราว์เซอร์จึงแนบ
-// Authorization เองไม่ได้ ต้องให้เซิร์ฟเวอร์ Next เป็นคนแนบให้ — ดู app/api/be/[...path]/route.ts
-// เขียนไว้ที่นี่ที่เดียว โค้ดหน้าเว็บ 80+ ไฟล์ที่ใช้ `${api}/...` จึงไม่ต้องแก้เลย
+// **ฝั่ง server ยิง backend ตรง / ฝั่ง browser ยิงผ่านตัวกลาง `/api/be`** (2026-09-20)
+// ตัวกลางเป็นคนแนบ token จาก cookie httpOnly ให้ — JS ในเบราว์เซอร์จึงไม่เคยถือ token เลย
+// (ดูเหตุผลเต็มที่ app/api/be/[...path]/route.ts และ CLAUDE.md ข้อ 6.2.3)
+// ห้ามเปลี่ยนกลับเป็น backendUrl เฉยๆ — `authHeader()` คืน object ว่างแล้ว ทุกหน้าจะได้ 401 ทันที
 const api = typeof window === "undefined" ? backendUrl : "/api/be";
-
 
 const theme = {
     sidebar: {

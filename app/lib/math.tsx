@@ -50,6 +50,11 @@ export function stripMathDelimiters(text: string): string {
     return splitMath(text).map((s) => s.value).join("").replace(/\\\$/g, "$");
 }
 
+// ขนาดสูตร (2026-09-26 ผู้ใช้ขอ — ตรงกับฝั่งลูกค้า tiwwai-store/lib/mathParse.ts): ค่าเริ่มต้นของ KaTeX วาดสูตรในบรรทัดข้อความแบบย่อ (text style) ตัวเศษ/ตัวส่วน
+// ของเศษส่วนเล็กกว่าข้อความรอบๆ มาก อ่านยาก โดยเฉพาะบนมือถือ · ใส่ \displaystyle ให้วาดขนาดเต็มเสมอ แลกกับ
+// บรรทัดที่มีเศษส่วนสูงขึ้นเล็กน้อย
+const katexSource = (latex: string) => `\\displaystyle ${latex}`;
+
 export function MathText({ text, className }: { text: string | null | undefined; className?: string }) {
     if (!text) return null;
 
@@ -62,7 +67,7 @@ export function MathText({ text, className }: { text: string | null | undefined;
                         key={i}
                         // KaTeX คืน HTML ที่ sanitize มาแล้วในโหมด trust: false — ดูเหตุผลด้านบนของไฟล์
                         dangerouslySetInnerHTML={{
-                            __html: katex.renderToString(seg.value, { throwOnError: false, output: "html" }),
+                            __html: katex.renderToString(katexSource(seg.value), { throwOnError: false, output: "html" }),
                         }}
                     />
                 ) : (

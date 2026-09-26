@@ -194,11 +194,12 @@ export default function ProductQuestionsPage() {
                 method: "DELETE",
                 headers: authHeader(),
             });
+            // backend บอกเองว่าลบจริงหรือซ่อน (ข้อที่มีลูกค้าเคยทำ) — backend รุ่นเก่าตอบ 204 ไม่มีเนื้อ ใช้ข้อความเดิม
+            const data = await res.json().catch(() => ({}));
             if (res.ok) {
-                toast.success("ลบคำถามสำเร็จ");
+                toast.success(data.message ?? "ลบคำถามสำเร็จ");
                 reload(); // โหลดใหม่แทนการตัดออกจาก state เฉยๆ กัน total/หน้าปัจจุบันไม่ตรงกับข้อมูลจริง
             } else {
-                const data = await res.json().catch(() => ({}));
                 toast.error(data.message ?? "ลบไม่สำเร็จ กรุณาลองใหม่");
             }
         } finally {
@@ -414,7 +415,7 @@ export default function ProductQuestionsPage() {
             <ConfirmDialog
                 open={!!deleteTarget}
                 title="ลบคำถามนี้?"
-                description="คำถามและตัวเลือกทั้งหมดของข้อนี้จะถูกลบและไม่สามารถกู้คืนได้"
+                description="คำถามจะหายจากชุดข้อสอบทันที — ถ้าเคยมีลูกค้าทำข้อนี้ไปแล้ว ระบบจะซ่อนไว้แทนการลบทิ้ง เพื่อให้ประวัติและคะแนนของลูกค้ายังอยู่ครบ"
                 confirmLabel="ลบ"
                 loading={isDeleting}
                 onConfirm={handleDelete}
@@ -424,7 +425,7 @@ export default function ProductQuestionsPage() {
             <ConfirmDialog
                 open={showBulkConfirm}
                 title={`ลบคำถามที่เลือกไว้ ${selectedIds.size} ข้อ?`}
-                description="คำถามและตัวเลือกทั้งหมดของทุกข้อที่เลือกจะถูกลบและไม่สามารถกู้คืนได้"
+                description="ทุกข้อที่เลือกจะหายจากชุดข้อสอบทันที — ข้อที่เคยมีลูกค้าทำไปแล้ว ระบบจะซ่อนไว้แทนการลบทิ้ง เพื่อให้ประวัติและคะแนนของลูกค้ายังอยู่ครบ"
                 confirmLabel="ลบทั้งหมด"
                 loading={isBulkDeleting}
                 onConfirm={handleBulkDelete}
